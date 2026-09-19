@@ -49,7 +49,7 @@ export function PeopleSearch() {
                 className="field"
                 name="university"
                 list="people-uni"
-                placeholder="School"
+                placeholder="School (search or type any name)"
                 style={{ margin: 0 }}
               />
               <datalist id="people-uni">

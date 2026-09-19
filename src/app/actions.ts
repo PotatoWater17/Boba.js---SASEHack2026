@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { COURSES, groupKindById, MEETUP_STYLES } from "@/courses";
-import { saveAttach, saveAvatar, removeAvatar } from "@/files";
+import { getAdmin } from "@/admin";
+import { removeAttach, saveAttach, saveAvatar, removeAvatar } from "@/files";
 import { resolveUniversity } from "@/universities";
 import { resolveMajor } from "@/majors";
 import { clearUser, formatTimeInput, getMe, hashPassword, isStrongPassword, isValidMeetDate, prisma, setUser, splitList } from "@/lib";
@@ -93,6 +94,7 @@ export async function updateProfile(formData: FormData) {
         .slice(0, 400),
       needHelp: String(formData.get("needHelp") || "").trim(),
       canHelp: String(formData.get("canHelp") || "").trim(),
+      showEmail: formData.get("showEmail") === "1",
       photoKey,
     },
   });
@@ -290,6 +292,10 @@ export async function markGroupSeen(meetingId: string) {
     where: { meetingId, userId: me.id },
     data: { lastReadAt: new Date() },
   });
+  await prisma.reactionNotice.updateMany({
+    where: { userId: me.id, meetingId, seen: false },
+    data: { seen: true },
+  });
 }
 
 export async function inviteToMeetup(formData: FormData) {
@@ -484,11 +490,46 @@ export async function sendDm(formData: FormData) {
   redirect(`/friends/${userId}`);
 }
 
+export async function unsendDm(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const messageId = String(formData.get("messageId") || "");
+  const userId = String(formData.get("userId") || "");
+  const msg = await prisma.directMessage.findUnique({ where: { id: messageId } });
+  if (!msg || msg.fromId !== me.id || msg.unsent) redirect(`/friends/${userId || ""}`);
+
+  await prisma.directMessage.update({ where: { id: messageId }, data: { unsent: true } });
+  redirect(`/friends/${userId}`);
+}
+
+export async function unsendMessage(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const messageId = String(formData.get("messageId") || "");
+  const meetingId = String(formData.get("meetingId") || "");
+  const msg = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!msg || msg.userId !== me.id || msg.unsent) redirect(`/meetings/${meetingId}`);
+
+  const member = await prisma.member.findUnique({
+    where: { meetingId_userId: { meetingId: msg.meetingId, userId: me.id } },
+  });
+  if (!member) redirect(`/meetings/${meetingId}`);
+
+  await prisma.message.update({ where: { id: messageId }, data: { unsent: true } });
+  redirect(`/meetings/${meetingId}`);
+}
+
 export async function markDmSeen(userId: string) {
   const me = await getMe();
   if (!me || !userId || userId === me.id) return;
   await prisma.directMessage.updateMany({
     where: { fromId: userId, toId: me.id, seen: false },
+    data: { seen: true },
+  });
+  await prisma.reactionNotice.updateMany({
+    where: { userId: me.id, actorId: userId, seen: false, dmId: { not: "" } },
     data: { seen: true },
   });
 }
@@ -575,4 +616,30 @@ export async function searchPeople(_prev: { results: PeopleHit[]; ran: boolean }
   });
 
   return { results, ran: true };
+}
+
+export async function deleteUser(formData: FormData) {
+  const admin = await getAdmin();
+  if (!admin) redirect("/dashboard");
+
+  const userId = String(formData.get("userId") || "");
+  if (!userId) redirect("/admin");
+  if (userId === admin.id) redirect("/admin?error=self");
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) redirect("/admin?error=missing");
+
+  if (user.photoKey) await removeAvatar(user.photoKey);
+
+  const dms = await prisma.directMessage.findMany({
+    where: {
+      OR: [{ fromId: userId }, { toId: userId }],
+      fileKey: { not: "" },
+    },
+    select: { fileKey: true },
+  });
+  for (const dm of dms) await removeAttach(dm.fileKey);
+
+  await prisma.user.delete({ where: { id: userId } });
+  redirect("/admin?deleted=1");
 }

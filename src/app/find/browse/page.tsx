@@ -90,9 +90,9 @@ export default async function BrowseMeetupsPage({
     <div className="page">
       <header className="page-header">
         <Link href="/find" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
-          ← Find buddies
+          ← Find Buddies
         </Link>
-        <h1 className="page-title">Browse meetups</h1>
+        <h1 className="page-title">Browse Meetups</h1>
         {myClasses.length ? (
           <p>
             Matching against: {myClasses.join(", ")}.{" "}
@@ -116,7 +116,7 @@ export default async function BrowseMeetupsPage({
           name="uni"
           list="uni-list"
           defaultValue={allSchools ? "" : uniFilter}
-          placeholder="Search a university"
+          placeholder="Search or type any school name"
           style={{ width: 260, margin: 0 }}
         />
         <datalist id="uni-list">

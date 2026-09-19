@@ -59,9 +59,9 @@ export default async function FindBuddiesPage({
     <div className="page" style={{ maxWidth: 640 }}>
       <header className="page-header">
         <Link href="/find" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
-          ← Find buddies
+          ← Find Buddies
         </Link>
-        <h1 className="page-title">Find your buddies</h1>
+        <h1 className="page-title">Find Your Buddies</h1>
         <p>Tell us what you&apos;re grinding on and we&apos;ll match you with people who line up.</p>
       </header>
 

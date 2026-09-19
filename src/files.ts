@@ -80,3 +80,10 @@ export async function removeAvatar(key: string) {
     await unlink(path.join(AVATAR_DIR, key));
   } catch {}
 }
+
+export async function removeAttach(key: string) {
+  if (!safeKey(key)) return;
+  try {
+    await unlink(path.join(ATTACH_DIR, key));
+  } catch {}
+}

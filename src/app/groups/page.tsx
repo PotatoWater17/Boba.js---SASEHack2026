@@ -29,20 +29,33 @@ export default async function GroupsPage({
       meeting: {
         include: {
           members: { include: { user: true } },
-          messages: { orderBy: { createdAt: "desc" }, take: 40, include: { user: true } },
+          messages: { orderBy: { createdAt: "desc" }, take: 1, include: { user: true } },
         },
       },
     },
   });
+
+  const lastRead = new Map(memberships.map((mem) => [mem.meetingId, mem.lastReadAt]));
+  const meetingIds = memberships.map((mem) => mem.meetingId);
+  const unreadMsgs = meetingIds.length
+    ? await prisma.message.findMany({
+        where: { meetingId: { in: meetingIds }, userId: { not: me.id } },
+        select: { meetingId: true, createdAt: true },
+      })
+    : [];
+  const unreadByMeeting = new Map<string, number>();
+  for (const msg of unreadMsgs) {
+    const readAt = lastRead.get(msg.meetingId);
+    if (!readAt || msg.createdAt.getTime() <= readAt.getTime()) continue;
+    unreadByMeeting.set(msg.meetingId, (unreadByMeeting.get(msg.meetingId) || 0) + 1);
+  }
 
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const rows = memberships
     .map((mem) => {
       const m = mem.meeting;
       const last = m.messages[0] || null;
-      const unread = m.messages.filter(
-        (msg) => msg.userId !== me.id && msg.createdAt.getTime() > mem.lastReadAt.getTime(),
-      ).length;
+      const unread = unreadByMeeting.get(m.id) || 0;
       return { m, mem, last, unread };
     })
     .filter(({ m, last, unread }) => {
@@ -75,7 +88,7 @@ export default async function GroupsPage({
   return (
     <div className="page chats-page" style={{ maxWidth: 640 }}>
       <header className="page-header" style={{ textAlign: "center" }}>
-        <h1 className="page-title">My groups</h1>
+        <h1 className="page-title">My Study Buddy</h1>
         <p>Meetups you signed up for — open one to chat.</p>
       </header>
 
@@ -105,7 +118,7 @@ export default async function GroupsPage({
 
       {memberships.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
-          You haven&apos;t joined any groups yet. <Link href="/find">Find buddies</Link>
+          You haven&apos;t joined any groups yet. <Link href="/find">Find Buddies</Link>
         </div>
       ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
@@ -148,7 +161,7 @@ export default async function GroupsPage({
                     ))}
                   </span>
                 </span>
-                {unread > 0 ? <span className="chat-badge">{unread}</span> : null}
+                {unread > 0 ? <span className="chat-badge">{unread > 99 ? "99+" : unread}</span> : null}
               </Link>
             );
           })}

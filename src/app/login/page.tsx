@@ -62,7 +62,7 @@ export default async function LoginPage({
       </div>
 
       <header className="page-header" style={{ marginTop: 28 }}>
-        <h1 className="page-title">Sign up</h1>
+        <h1 className="page-title">Sign Up</h1>
       </header>
       <div className="box">
         <form action={signup}>
@@ -91,7 +91,7 @@ export default async function LoginPage({
             <input className="field" name="confirm" type="password" required minLength={8} />
           </label>
           <button className="btn" type="submit" style={{ width: "100%" }}>
-            Sign up
+            Sign Up
           </button>
         </form>
         <p style={{ marginBottom: 0 }}>

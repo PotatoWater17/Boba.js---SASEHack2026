@@ -23,7 +23,7 @@ export function InviteBuddies({
     return (
       <div className="card" style={{ marginTop: 14 }}>
         <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
-        <p style={{ margin: 0, color: "#666" }}>
+        <p className="text-muted" style={{ margin: 0 }}>
           No buddies left to invite. Add people from Find your buddies first.
         </p>
       </div>
@@ -33,7 +33,7 @@ export function InviteBuddies({
   return (
     <div className="card" style={{ marginTop: 14 }}>
       <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
-      <p style={{ margin: "0 0 12px", color: "#666", fontSize: 14 }}>
+      <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 14 }}>
         They&apos;ll get a chat invite and have to accept it.
       </p>
       <div className="invite-list">

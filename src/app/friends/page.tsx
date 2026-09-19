@@ -166,11 +166,13 @@ export default async function FriendsPage({
       ) : (
         <div className="chat-list">
           {threads.map(({ friend, last, unread }) => {
-            const preview = last?.text
-              ? last.text
-              : last?.fileName
-                ? "Sent an attachment"
-                : "Say hi";
+            const preview = last?.unsent
+              ? "Unsent"
+              : last?.text
+                ? last.text
+                : last?.fileName
+                  ? "Sent an attachment"
+                  : "Say hi";
             const when = last ? timeAgo(last.createdAt) : "";
             const mine = last && last.fromId === me.id;
             return (

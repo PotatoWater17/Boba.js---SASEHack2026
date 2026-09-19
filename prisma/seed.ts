@@ -45,6 +45,9 @@ const EXTRA = [
 ] as const;
 
 async function main() {
+  await prisma.reactionNotice.deleteMany();
+  await prisma.dmReaction.deleteMany();
+  await prisma.messageReaction.deleteMany();
   await prisma.directMessage.deleteMany();
   await prisma.friendship.deleteMany();
   await prisma.message.deleteMany();
@@ -137,6 +140,7 @@ async function main() {
     data: {
       email: "ryanh@auburn.edu",
       password: hash("RyanH"),
+      isAdmin: true,
       firstName: "Ryan",
       lastName: "H",
       year: "Junior",
@@ -151,6 +155,7 @@ async function main() {
     data: {
       email: "aidenb@auburn.edu",
       password: hash("AidenB"),
+      isAdmin: true,
       firstName: "Aiden",
       lastName: "B",
       year: "Sophomore",
@@ -165,6 +170,7 @@ async function main() {
     data: {
       email: "bryanm@auburn.edu",
       password: hash("BryanM"),
+      isAdmin: true,
       firstName: "Bryan",
       lastName: "M",
       year: "Junior",
@@ -179,6 +185,7 @@ async function main() {
     data: {
       email: "danielk@auburn.edu",
       password: hash("DanielK"),
+      isAdmin: true,
       firstName: "Daniel",
       lastName: "K",
       year: "Sophomore",

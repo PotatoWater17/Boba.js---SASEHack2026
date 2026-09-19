@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Avatar } from "@/avatar";
 import { isImageMime } from "@/files";
+import { ChatReactions } from "@/chat-reactions";
 import { getMe, prisma, timeAgo } from "@/lib";
+import { packReactions } from "@/reactions";
+import { unsendDm } from "@/app/actions";
 import { DmCompose } from "./compose";
 import { DmThread } from "./thread";
 import { SeenOnOpen } from "./seen";
+import { DmImage } from "./dm-image";
 import { InviteCard } from "./invite-card";
 
 export default async function FriendChatPage({
@@ -30,7 +34,10 @@ export default async function FriendChatPage({
         { fromId: friend.id, toId: me.id },
       ],
     },
-    include: { from: true },
+    include: {
+      from: true,
+      reactions: { include: { user: { select: { id: true, firstName: true } } } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -71,7 +78,7 @@ export default async function FriendChatPage({
       <div className="card">
         <DmThread>
           {messages.length === 0 ? (
-            <p style={{ color: "#777", margin: 0 }}>No messages yet. Say hi.</p>
+            <p className="text-muted" style={{ margin: 0 }}>No messages yet. Say hi.</p>
           ) : (
             messages.map((msg) => {
               const invite = msg.inviteId ? inviteMap.get(msg.inviteId) : null;
@@ -79,23 +86,42 @@ export default async function FriendChatPage({
                 <div key={msg.id} className={`dm-bubble${msg.fromId === me.id ? " mine" : ""}`}>
                   <div className="dm-bubble-meta">
                     {msg.from.firstName} · {timeAgo(msg.createdAt)}
+                    {msg.fromId === me.id && !msg.unsent ? (
+                      <form action={unsendDm} className="dm-unsend-form">
+                        <input type="hidden" name="messageId" value={msg.id} />
+                        <input type="hidden" name="userId" value={friend.id} />
+                        <button type="submit" className="dm-unsend-btn">
+                          Unsend
+                        </button>
+                      </form>
+                    ) : null}
                   </div>
-                  {invite ? (
-                    <InviteCard invite={invite} mine={msg.fromId === me.id} />
-                  ) : msg.text ? (
-                    <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
-                  ) : null}
-                  {msg.fileKey ? (
-                    isImageMime(msg.fileMime) ? (
-                      <a href={`/api/files/${msg.id}`} target="_blank" rel="noreferrer">
-                        <img className="dm-pic" src={`/api/files/${msg.id}`} alt={msg.fileName || "Photo"} />
-                      </a>
-                    ) : (
-                      <a className="dm-file" href={`/api/files/${msg.id}`}>
-                        {msg.fileName || "Attachment"}
-                      </a>
-                    )
-                  ) : null}
+                  {msg.unsent ? (
+                    <div className="msg-unsent">Unsent</div>
+                  ) : (
+                    <>
+                      {invite ? (
+                        <InviteCard invite={invite} mine={msg.fromId === me.id} />
+                      ) : msg.text ? (
+                        <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
+                      ) : null}
+                      {msg.fileKey ? (
+                        isImageMime(msg.fileMime) ? (
+                          <DmImage src={`/api/files/${msg.id}`} alt={msg.fileName || "Photo"} />
+                        ) : (
+                          <a className="dm-file" href={`/api/files/${msg.id}`}>
+                            {msg.fileName || "Attachment"}
+                          </a>
+                        )
+                      ) : null}
+                      <ChatReactions
+                        kind="dm"
+                        messageId={msg.id}
+                        meId={me.id}
+                        initial={packReactions(msg.reactions, me.id)}
+                      />
+                    </>
+                  )}
                 </div>
               );
             })

@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const msg = await prisma.directMessage.findUnique({ where: { id } });
-  if (!msg?.fileKey) return new NextResponse("Not found", { status: 404 });
+  if (!msg?.fileKey || msg.unsent) return new NextResponse("Not found", { status: 404 });
   if (msg.fromId !== me.id && msg.toId !== me.id) {
     return new NextResponse("Not found", { status: 404 });
   }

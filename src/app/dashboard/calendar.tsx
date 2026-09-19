@@ -111,7 +111,7 @@ export function DashCalendar({
               {prettyDate(open)}
             </h3>
             {picked.length === 0 ? (
-              <p style={{ color: "#555" }}>No meetups this day.</p>
+              <p className="text-muted">No meetups this day.</p>
             ) : (
               <div className="dash-meet-list" style={{ margin: "12px 0 16px" }}>
                 {picked.map((m) => (

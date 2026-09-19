@@ -45,7 +45,7 @@ export default async function ProfilePage({
     return (
       <div className="page" style={{ maxWidth: 560 }}>
         <header className="page-header">
-          <h1 className="page-title">Edit profile</h1>
+          <h1 className="page-title">Edit Profile</h1>
         </header>
         <form action={updateProfile} className="box">
           {error === "type" ? <p className="err">Use a jpg, png, gif, or webp.</p> : null}
@@ -82,6 +82,15 @@ export default async function ProfilePage({
           </label>
           <ClassBubbles label="Classes Need help in" name="needHelp" initial={need} />
           <ClassBubbles label="Classes Could help in" name="canHelp" initial={help} />
+          <div className="profile-email-setting">
+            <p style={{ margin: "0 0 8px", fontSize: 14 }}>
+              Email: <b>{user.email}</b>
+            </p>
+            <label className="profile-email-toggle">
+              <input type="checkbox" name="showEmail" value="1" defaultChecked={user.showEmail} />
+              Show my email on my profile
+            </label>
+          </div>
           <button className="btn" type="submit">
             Save
           </button>{" "}
@@ -111,12 +120,22 @@ export default async function ProfilePage({
       <Avatar user={user} className="avatar avatar-lg" style={{ margin: "20px auto" }} />
       <h2 style={{ marginBottom: 4 }}>
         {user.firstName} {user.lastName}{" "}
-        <span style={{ fontSize: 16, fontWeight: 400, color: "#666" }}>{user.pronouns}</span>
+        <span className="text-muted" style={{ fontSize: 16, fontWeight: 400 }}>{user.pronouns}</span>
       </h2>
       <div style={{ marginBottom: 16 }}>
         <p style={{ margin: "4px 0" }}>{user.university || "University not set"}</p>
         {user.year ? <p style={{ margin: "4px 0" }}>{user.year}</p> : null}
         {user.major ? <p style={{ margin: "4px 0" }}>{user.major}</p> : null}
+        {isMe || user.showEmail ? (
+          <p style={{ margin: "8px 0 0", fontSize: 14 }}>
+            {user.email}
+            {isMe && !user.showEmail ? (
+              <span className="text-muted" style={{ display: "block", fontSize: 12, marginTop: 2 }}>
+                Hidden from others
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
 
       {!isMe ? (
@@ -173,18 +192,18 @@ export default async function ProfilePage({
       <div className="profile-bits">
         <section>
           <h3>Bio</h3>
-          <p style={{ color: user.bio ? "var(--ink)" : "#777" }}>{user.bio || "No bio yet."}</p>
+          <p className={user.bio ? undefined : "text-muted"} style={{ color: user.bio ? "var(--ink)" : undefined }}>{user.bio || "No bio yet."}</p>
         </section>
         <section>
           <h3>Classes Need help in</h3>
           <div className="profile-bubbles">
-            {need.length ? need.map((c) => <span key={c} className="bubble">{c}</span>) : <span style={{ color: "#777" }}>None listed</span>}
+            {need.length ? need.map((c) => <span key={c} className="bubble">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
         <section>
           <h3>Classes Could help in</h3>
           <div className="profile-bubbles">
-            {help.length ? help.map((c) => <span key={c} className="bubble">{c}</span>) : <span style={{ color: "#777" }}>None listed</span>}
+            {help.length ? help.map((c) => <span key={c} className="bubble">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
       </div>

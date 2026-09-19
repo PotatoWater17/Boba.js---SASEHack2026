@@ -73,8 +73,21 @@ export default async function IntroPage() {
   const me = await getMe();
 
   return (
-    <div className="page">
-      <div className="hero">
+    <div className="about-page">
+      <div className="about-bg" aria-hidden="true">
+        <Image
+          src="/desk-lamp-notebook-arrangement.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="about-bg-img"
+        />
+        <div className="about-bg-shade" />
+      </div>
+
+      <div className="page about-content">
+      <div className="hero about-hero">
         <Image
           src="/teddy-bear-face.jpg"
           alt="StudyBuddyBoard teddy mascot"
@@ -99,18 +112,18 @@ export default async function IntroPage() {
             </Link>
             {!me ? (
               <Link className="btn" href="/login">
-                Login / Sign up
+                Login / Sign Up
               </Link>
             ) : (
               <Link className="btn" href="/find">
-                Find buddies
+                Find Buddies
               </Link>
             )}
           </div>
         </div>
       </div>
 
-      <section className="section">
+      <section className="section about-panel">
         <h2 className="section-title">About Us</h2>
         <p className="lead">
           We built <span className="brand-name">StudyBuddyBoard</span> so you don&apos;t have to cram by yourself. Post a meetup, jump into
@@ -119,7 +132,7 @@ export default async function IntroPage() {
         </p>
       </section>
 
-      <section className="section">
+      <section className="section about-panel">
         <h2 className="section-title">
           Why <span className="brand-name">StudyBuddyBoard</span>?
         </h2>
@@ -143,7 +156,7 @@ export default async function IntroPage() {
         </ul>
       </section>
 
-      <section className="section">
+      <section className="section about-panel">
         <h2 className="section-title">Three things we help with</h2>
         <div className="reason-row">
           {reasons.map((item) => (
@@ -156,7 +169,7 @@ export default async function IntroPage() {
         </div>
       </section>
 
-      <section className="section cta-band">
+      <section className="section cta-band about-panel">
         <h2 className="section-title" style={{ marginTop: 0 }}>
           Ready to find a study buddy?
         </h2>
@@ -167,6 +180,7 @@ export default async function IntroPage() {
           {me ? "Open dashboard" : "Create an account"}
         </Link>
       </section>
+      </div>
     </div>
   );
 }

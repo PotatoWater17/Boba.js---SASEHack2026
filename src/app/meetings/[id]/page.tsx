@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { joinMeeting, sendMessage } from "@/app/actions";
+import { joinMeeting, sendMessage, unsendMessage } from "@/app/actions";
 import { CreateMeetupForm, LeaveGroupButton } from "@/ui";
 import { Avatar } from "@/avatar";
+import { ChatReactions } from "@/chat-reactions";
 import { formatMeetDate, getMe, groupKindLabel, prisma, splitList } from "@/lib";
+import { packReactions } from "@/reactions";
 import { GroupSeenOnOpen } from "./seen";
 import { InviteBuddies } from "./invite";
 
@@ -25,7 +27,13 @@ export default async function MeetingPage({
     include: {
       host: true,
       members: { include: { user: true } },
-      messages: { include: { user: true }, orderBy: { createdAt: "asc" } },
+      messages: {
+        include: {
+          user: true,
+          reactions: { include: { user: { select: { id: true, firstName: true } } } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!meeting) notFound();
@@ -69,7 +77,7 @@ export default async function MeetingPage({
           <Link href={`/meetings/${meeting.id}`} className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
             ← Back
           </Link>
-          <h1 className="page-title">Edit meetup</h1>
+          <h1 className="page-title">Edit Meetup</h1>
           <p>Update the details for your study session.</p>
         </header>
         <CreateMeetupForm
@@ -101,7 +109,7 @@ export default async function MeetingPage({
 
       <header className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>
-          Meet up info
+          Meetup Info
         </h1>
         {isOwner ? (
           <Link href={`/meetings/${meeting.id}?edit=1`} className="btn" title="Edit meetup">
@@ -208,18 +216,39 @@ export default async function MeetingPage({
       <div className="card">
         <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minHeight: 160, marginBottom: 12 }}>
           {meeting.messages.length === 0 ? (
-            <p style={{ color: "#777" }}>No messages yet.</p>
+            <p className="text-muted">No messages yet.</p>
           ) : (
             meeting.messages.map((msg) => (
               <div key={msg.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
                 <Link href={`/profile/${msg.userId}`}>
                   <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
                 </Link>
-                <div>
-                  <b style={{ fontSize: 13 }}>
-                    {msg.user.firstName}:{" "}
-                  </b>
-                  {msg.text}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <b style={{ fontSize: 13 }}>{msg.user.firstName}:</b>
+                    {msg.userId === me.id && !msg.unsent ? (
+                      <form action={unsendMessage} className="dm-unsend-form">
+                        <input type="hidden" name="messageId" value={msg.id} />
+                        <input type="hidden" name="meetingId" value={meeting.id} />
+                        <button type="submit" className="dm-unsend-btn">
+                          Unsend
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
+                  {msg.unsent ? (
+                    <div className="msg-unsent">Unsent</div>
+                  ) : (
+                    <>
+                      {msg.text}
+                      <ChatReactions
+                        kind="group"
+                        messageId={msg.id}
+                        meId={me.id}
+                        initial={packReactions(msg.reactions, me.id)}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             ))
@@ -234,7 +263,7 @@ export default async function MeetingPage({
             </button>
           </form>
         ) : (
-          <p style={{ margin: 0, color: "#666" }}>Join to chat.</p>
+          <p className="text-muted" style={{ margin: 0 }}>Join to chat.</p>
         )}
       </div>
     </div>

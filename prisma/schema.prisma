@@ -21,6 +21,8 @@ model User {
   photoKey   String    @default("")
   needHelp   String    @default("")
   canHelp    String    @default("")
+  isAdmin    Boolean   @default(false)
+  showEmail  Boolean   @default(false)
   createdAt  DateTime  @default(now())
   members    Member[]
   messages   Message[]
@@ -31,6 +33,10 @@ model User {
   dmsTo       DirectMessage[] @relation("DmTo")
   invitesFrom MeetupInvite[] @relation("InviteFrom")
   invitesTo   MeetupInvite[] @relation("InviteTo")
+  dmReactions DmReaction[]
+  messageReactions MessageReaction[]
+  reactionNotices ReactionNotice[] @relation("NoticeTo")
+  reactionActs    ReactionNotice[] @relation("NoticeFrom")
 }
 
 model Meeting {
@@ -49,7 +55,7 @@ model Meeting {
   style      String    @default("Practice problems")
   hostId     String
   createdAt  DateTime  @default(now())
-  host       User      @relation("Host", fields: [hostId], references: [id])
+  host       User      @relation("Host", fields: [hostId], references: [id], onDelete: Cascade)
   members    Member[]
   messages   Message[]
   invites    MeetupInvite[]
@@ -99,9 +105,11 @@ model Message {
   meetingId String
   userId    String
   text      String
+  unsent    Boolean  @default(false)
   createdAt DateTime @default(now())
   meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions MessageReaction[]
 }
 
 model DirectMessage {
@@ -114,7 +122,47 @@ model DirectMessage {
   fileMime  String   @default("")
   inviteId  String   @default("")
   seen      Boolean  @default(true)
+  unsent    Boolean  @default(false)
   createdAt DateTime @default(now())
   from      User     @relation("DmFrom", fields: [fromId], references: [id], onDelete: Cascade)
   to        User     @relation("DmTo", fields: [toId], references: [id], onDelete: Cascade)
+  reactions DmReaction[]
+}
+
+model DmReaction {
+  id        String        @id @default(cuid())
+  dmId      String
+  userId    String
+  emoji     String
+  createdAt DateTime      @default(now())
+  dm        DirectMessage @relation(fields: [dmId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([dmId, userId, emoji])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model ReactionNotice {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String
+  emoji     String
+  dmId      String   @default("")
+  messageId String   @default("")
+  meetingId String   @default("")
+  seen      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation("NoticeTo", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User     @relation("NoticeFrom", fields: [actorId], references: [id], onDelete: Cascade)
 }

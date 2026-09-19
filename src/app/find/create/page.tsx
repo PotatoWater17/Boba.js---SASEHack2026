@@ -11,9 +11,9 @@ export default async function CreateMeetupPage() {
     <div className="page" style={{ maxWidth: 640 }}>
       <header className="page-header">
         <Link href="/find" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
-          ← Find buddies
+          ← Find Buddies
         </Link>
-        <h1 className="page-title">Create a meetup</h1>
+        <h1 className="page-title">Create a Meetup</h1>
         <p>Post a study session so classmates can jump in.</p>
       </header>
       <CreateMeetupForm defaultUniversity={me.university} />

@@ -4,7 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { createMeeting, leaveMeeting, updateMeeting } from "@/app/actions";
 import { COURSES, GROUP_KINDS, LOCATIONS, MEETUP_STYLES, topicsFor, type GroupKindId } from "@/courses";
 import { MAJORS } from "@/majors";
-import { UNIVERSITIES } from "@/universities";
+import { searchUniversities, UNIVERSITIES } from "@/universities";
 
 export function ClassBubbles({
   label,
@@ -113,13 +113,13 @@ export function UniversityPicker({
   const [query, setQuery] = useState(defaultValue);
   const [open, setOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = !q
-      ? UNIVERSITIES.slice(0, 18)
-      : UNIVERSITIES.filter((u) => u.toLowerCase().includes(q));
-    return list.slice(0, 24);
-  }, [query]);
+  const trimmed = query.trim();
+  const filtered = useMemo(() => searchUniversities(trimmed, 24), [trimmed]);
+  const exact = useMemo(
+    () => UNIVERSITIES.find((u) => u.toLowerCase() === trimmed.toLowerCase()),
+    [trimmed],
+  );
+  const showCustom = trimmed.length >= 3 && !exact;
 
   function pick(value: string) {
     setQuery(value);
@@ -148,32 +148,42 @@ export function UniversityPicker({
             if (e.key === "Enter") {
               e.preventDefault();
               if (filtered[0]) pick(filtered[0]);
+              else if (showCustom) pick(trimmed);
             }
           }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
         />
-        {open ? (
+        {open && (trimmed.length >= 2 || showCustom) ? (
           <div className="topic-menu">
-            {filtered.length === 0 ? (
-              <div className="topic-empty">No match — keep typing a school name.</div>
-            ) : (
-              filtered.map((u) => (
-                <button
-                  key={u}
-                  type="button"
-                  className="topic-option"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => pick(u)}
-                >
-                  {u}
-                </button>
-              ))
-            )}
+            {showCustom ? (
+              <button
+                type="button"
+                className="topic-option topic-option-custom"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(trimmed)}
+              >
+                Use &quot;{trimmed}&quot;
+              </button>
+            ) : null}
+            {filtered.map((u) => (
+              <button
+                key={u}
+                type="button"
+                className="topic-option"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(u)}
+              >
+                {u}
+              </button>
+            ))}
+            {filtered.length === 0 && !showCustom ? (
+              <div className="topic-empty">No match — type at least 3 characters to use a custom name.</div>
+            ) : null}
           </div>
         ) : null}
       </div>
-      <p style={{ fontSize: 13, color: "#666", margin: "6px 0 12px" }}>
-        Search the list or type your school if it isn&apos;t there.
+      <p className="text-muted" style={{ fontSize: 13, margin: "6px 0 12px" }}>
+        Search 6,000+ schools or enter your own if it&apos;s not listed.
       </p>
     </div>
   );
