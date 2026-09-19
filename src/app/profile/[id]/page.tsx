@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Avatar, photoSrc } from "@/avatar";
-import { ClassBubbles, MajorPicker, UniversityPicker } from "@/ui";
-import { acceptFriend, addFriend, removeFriend, updateProfile } from "@/app/actions";
+import { ClassBubbles, MajorPicker, UniversityPicker, YearPicker } from "@/ui";
+import { acceptFriend, addFriend, changePassword, removeFriend, updateProfile } from "@/app/actions";
+import { formatAccountId } from "@/account-id";
+import { isUserAdmin } from "@/admin";
 import { getMe, initials, prisma, splitList } from "@/lib";
 import { PhotoField } from "./photo";
 
@@ -11,19 +13,20 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ edit?: string; error?: string }>;
+  searchParams: Promise<{ edit?: string; error?: string; pw?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const { id } = await params;
-  const { edit, error } = await searchParams;
+  const { edit, error, pw } = await searchParams;
   const userId = id === "me" ? me.id : id;
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) notFound();
 
   const isMe = me.id === user.id;
+  const adminView = isUserAdmin(me);
   const editing = isMe && edit === "1";
   const need = splitList(user.needHelp);
   const help = splitList(user.canHelp);
@@ -50,6 +53,13 @@ export default async function ProfilePage({
         <form action={updateProfile} className="box">
           {error === "type" ? <p className="err">Use a jpg, png, gif, or webp.</p> : null}
           {error === "size" ? <p className="err">Keep photos under 4 MB.</p> : null}
+          {error === "pwfill" ? <p className="err">Fill out all password fields.</p> : null}
+          {error === "pwbad" ? <p className="err">Current password is incorrect.</p> : null}
+          {error === "pwmatch" ? <p className="err">New passwords do not match.</p> : null}
+          {error === "pwweak" ? (
+            <p className="err">Password needs 8+ characters with upper, lower, a number, and a special character.</p>
+          ) : null}
+          {pw === "changed" ? <p className="ok">Password updated.</p> : null}
           <PhotoField src={photoSrc(user)} fallback={initials(user.firstName, user.lastName)} />
           <label>
             First name
@@ -63,10 +73,7 @@ export default async function ProfilePage({
             Pronouns
             <input className="field" name="pronouns" defaultValue={user.pronouns} />
           </label>
-          <label>
-            Year
-            <input className="field" name="year" defaultValue={user.year} placeholder="Sophomore" />
-          </label>
+          <YearPicker defaultValue={user.year} />
           <UniversityPicker defaultValue={user.university} />
           <MajorPicker defaultValue={user.major} />
           <label>
@@ -98,6 +105,30 @@ export default async function ProfilePage({
             Cancel
           </Link>
         </form>
+
+        <div className="box profile-password-box">
+          <h2 className="profile-password-title">Change password</h2>
+          <form action={changePassword}>
+            <label>
+              Current password
+              <input className="field" name="currentPassword" type="password" required autoComplete="current-password" />
+            </label>
+            <label>
+              New password
+              <input className="field" name="newPassword" type="password" required minLength={8} autoComplete="new-password" />
+            </label>
+            <label>
+              Confirm new password
+              <input className="field" name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" />
+            </label>
+            <p className="profile-password-hint">
+              Must be 8+ characters and include uppercase, lowercase, a number, and a special character.
+            </p>
+            <button className="btn" type="submit">
+              Update password
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
@@ -123,6 +154,11 @@ export default async function ProfilePage({
         <span className="text-muted" style={{ fontSize: 16, fontWeight: 400 }}>{user.pronouns}</span>
       </h2>
       <div style={{ marginBottom: 16 }}>
+        {isMe || adminView ? (
+          <p className="text-muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
+            Account ID: <b style={{ color: "var(--ink)" }}>{formatAccountId(user.accountNo)}</b>
+          </p>
+        ) : null}
         <p style={{ margin: "4px 0" }}>{user.university || "University not set"}</p>
         {user.year ? <p style={{ margin: "4px 0" }}>{user.year}</p> : null}
         {user.major ? <p style={{ margin: "4px 0" }}>{user.major}</p> : null}
@@ -203,7 +239,7 @@ export default async function ProfilePage({
         <section>
           <h3>Classes Could help in</h3>
           <div className="profile-bubbles">
-            {help.length ? help.map((c) => <span key={c} className="bubble">{c}</span>) : <span className="text-muted">None listed</span>}
+            {help.length ? help.map((c) => <span key={c} className="bubble bubble-help">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
       </div>

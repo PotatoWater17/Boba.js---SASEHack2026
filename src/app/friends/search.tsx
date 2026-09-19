@@ -4,9 +4,8 @@ import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { acceptFriend, addFriend, searchPeople } from "@/app/actions";
 import { MAJORS } from "@/majors";
+import { YearPicker } from "@/ui";
 import { UNIVERSITIES } from "@/universities";
-
-const YEARS = ["Freshman", "Sophomore", "Junior", "Senior", "Graduate"];
 
 export function PeopleSearch() {
   const [open, setOpen] = useState(false);
@@ -57,14 +56,7 @@ export function PeopleSearch() {
                   <option key={u} value={u} />
                 ))}
               </datalist>
-              <select className="field" name="year" style={{ margin: 0 }}>
-                <option value="">Any year</option>
-                {YEARS.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+              <YearPicker hideLabel allowAny compact />
               <select className="field" name="major" style={{ margin: 0 }}>
                 <option value="">Any major</option>
                 {MAJORS.map((m) => (

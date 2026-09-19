@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { COURSES, groupKindById, MEETUP_STYLES } from "@/courses";
+import { nextAccountNo } from "@/account-id";
 import { getAdmin } from "@/admin";
 import { removeAttach, saveAttach, saveAvatar, removeAvatar } from "@/files";
 import { resolveUniversity } from "@/universities";
@@ -27,6 +28,7 @@ export async function signup(formData: FormData) {
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) redirect("/login?error=exists");
 
+  const accountNo = await nextAccountNo();
   const user = await prisma.user.create({
     data: {
       email,
@@ -34,6 +36,7 @@ export async function signup(formData: FormData) {
       firstName,
       lastName,
       university,
+      accountNo,
     },
   });
 
@@ -59,6 +62,102 @@ export async function login(formData: FormData) {
 export async function logout() {
   await clearUser();
   redirect("/");
+}
+
+export async function changePassword(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const current = String(formData.get("currentPassword") || "");
+  const next = String(formData.get("newPassword") || "");
+  const confirm = String(formData.get("confirmPassword") || "");
+
+  if (!current || !next || !confirm) redirect(`/profile/${me.id}?edit=1&error=pwfill`);
+  if (me.password !== hashPassword(current)) redirect(`/profile/${me.id}?edit=1&error=pwbad`);
+  if (next !== confirm) redirect(`/profile/${me.id}?edit=1&error=pwmatch`);
+  if (!isStrongPassword(next)) redirect(`/profile/${me.id}?edit=1&error=pwweak`);
+
+  await prisma.user.update({
+    where: { id: me.id },
+    data: { password: hashPassword(next) },
+  });
+
+  redirect(`/profile/${me.id}?edit=1&pw=changed`);
+}
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  const note = String(formData.get("note") || "")
+    .trim()
+    .slice(0, 300);
+
+  if (!email) redirect("/login?forgot=fill");
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user) {
+    const existing = await prisma.passwordResetRequest.findFirst({
+      where: { userId: user.id, status: "pending" },
+    });
+    if (existing) {
+      await prisma.passwordResetRequest.update({
+        where: { id: existing.id },
+        data: { note: note || existing.note, createdAt: new Date() },
+      });
+    } else {
+      await prisma.passwordResetRequest.create({
+        data: { userId: user.id, note },
+      });
+    }
+  }
+
+  redirect("/login?forgot=sent");
+}
+
+export async function adminResetPassword(formData: FormData) {
+  const admin = await getAdmin();
+  if (!admin) redirect("/dashboard");
+
+  const requestId = String(formData.get("requestId") || "");
+  const newPassword = String(formData.get("newPassword") || "");
+  const confirm = String(formData.get("confirmPassword") || "");
+
+  if (!requestId || !newPassword || !confirm) redirect("/admin?error=pwreset");
+  if (newPassword !== confirm) redirect("/admin?error=pwmatch");
+  if (!isStrongPassword(newPassword)) redirect("/admin?error=pwweak");
+
+  const req = await prisma.passwordResetRequest.findUnique({ where: { id: requestId } });
+  if (!req || req.status !== "pending") redirect("/admin?error=pwreset");
+
+  await prisma.user.update({
+    where: { id: req.userId },
+    data: { password: hashPassword(newPassword) },
+  });
+  await prisma.passwordResetRequest.update({
+    where: { id: requestId },
+    data: { status: "completed", resolvedAt: new Date(), resolvedById: admin.id },
+  });
+
+  redirect("/admin?pwreset=done");
+}
+
+export async function dismissPasswordReset(formData: FormData) {
+  const admin = await getAdmin();
+  if (!admin) redirect("/dashboard");
+
+  const requestId = String(formData.get("requestId") || "");
+  if (!requestId) redirect("/admin");
+
+  const req = await prisma.passwordResetRequest.findUnique({ where: { id: requestId } });
+  if (!req || req.status !== "pending") redirect("/admin?error=pwreset");
+
+  await prisma.passwordResetRequest.update({
+    where: { id: requestId },
+    data: { status: "dismissed", resolvedAt: new Date(), resolvedById: admin.id },
+  });
+
+  redirect("/admin?pwreset=dismissed");
 }
 
 export async function updateProfile(formData: FormData) {

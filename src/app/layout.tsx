@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { logout } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { isUserAdmin } from "@/admin";
 import { getMe, prisma } from "@/lib";
 import { NavLinks } from "@/nav";
-import { ThemeToggle } from "@/theme";
+import { ThemeInit, ThemeToggle } from "@/theme";
 import { MessageToasts } from "@/toasts";
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const themeCookie = (await cookies()).get("theme")?.value;
   const me = await getMe();
   const isAdmin = me ? isUserAdmin(me) : false;
   const friendNotices = me
@@ -54,15 +56,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.setAttribute("data-theme","dark")}catch(e){}})();`,
-          }}
-        />
-      </head>
+    <html lang="en" suppressHydrationWarning data-theme={themeCookie === "dark" ? "dark" : undefined}>
       <body suppressHydrationWarning>
+        <ThemeInit />
         <header className="nav">
           <Link href="/" className="nav-brand">
             <b>StudyBuddyBoard</b>

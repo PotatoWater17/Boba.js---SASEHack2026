@@ -9,6 +9,7 @@ datasource db {
 
 model User {
   id         String    @id @default(cuid())
+  accountNo  Int?      @unique
   email      String    @unique
   password   String
   firstName  String
@@ -37,6 +38,21 @@ model User {
   messageReactions MessageReaction[]
   reactionNotices ReactionNotice[] @relation("NoticeTo")
   reactionActs    ReactionNotice[] @relation("NoticeFrom")
+  passwordResets  PasswordResetRequest[]
+}
+
+model PasswordResetRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  note         String    @default("")
+  /// pending | completed | dismissed
+  status       String    @default("pending")
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String    @default("")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
 
 model Meeting {

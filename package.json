@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "db:reset": "prisma db push --force-reset && prisma db seed"
+    "db:reset": "prisma db push --force-reset && prisma db seed",
+    "db:restore-team": "tsx scripts/restore-team.ts",
+    "db:patch-demo": "tsx scripts/patch-demo-world.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

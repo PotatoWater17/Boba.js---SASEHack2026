@@ -4,14 +4,45 @@ import { useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
 function readTheme(): Theme {
   return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
-function applyTheme(theme: Theme) {
+function readStoredTheme(): Theme {
+  try {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") return stored;
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+  } catch {}
+  return "light";
+}
+
+export function applyTheme(theme: Theme) {
   if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
   else document.documentElement.removeAttribute("data-theme");
-  localStorage.setItem("theme", theme);
+  try {
+    localStorage.setItem("theme", theme);
+    document.cookie = `theme=${theme};path=/;max-age=${COOKIE_MAX_AGE};SameSite=Lax`;
+  } catch {}
+}
+
+/** Sync localStorage / system preference on first client load (no script tag needed). */
+export function ThemeInit() {
+  useEffect(() => {
+    const onServer = readTheme();
+    const stored = readStoredTheme();
+    if (stored !== onServer) applyTheme(stored);
+    else {
+      try {
+        localStorage.setItem("theme", stored);
+        document.cookie = `theme=${stored};path=/;max-age=${COOKIE_MAX_AGE};SameSite=Lax`;
+      } catch {}
+    }
+  }, []);
+
+  return null;
 }
 
 function SunIcon() {

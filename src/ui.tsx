@@ -5,6 +5,7 @@ import { createMeeting, leaveMeeting, updateMeeting } from "@/app/actions";
 import { COURSES, GROUP_KINDS, LOCATIONS, MEETUP_STYLES, topicsFor, type GroupKindId } from "@/courses";
 import { MAJORS } from "@/majors";
 import { searchUniversities, UNIVERSITIES } from "@/universities";
+import { isYearOption, YEAR_OPTIONS } from "@/years";
 
 export function ClassBubbles({
   label,
@@ -264,6 +265,57 @@ export function MajorPicker({
         ) : null}
       </div>
       <p style={{ fontSize: 13, color: "#666", margin: "6px 0 12px" }}>Pick a major from the list.</p>
+    </div>
+  );
+}
+
+export function YearPicker({
+  name = "year",
+  defaultValue = "",
+  required = false,
+  label = "Year",
+  placeholder = "Select year…",
+  allowAny = false,
+  hideLabel = false,
+  compact = false,
+}: {
+  name?: string;
+  defaultValue?: string;
+  required?: boolean;
+  label?: string;
+  placeholder?: string;
+  allowAny?: boolean;
+  hideLabel?: boolean;
+  compact?: boolean;
+}) {
+  const legacy = defaultValue && !isYearOption(defaultValue);
+  const field = (
+    <select
+      className="field"
+      name={name}
+      defaultValue={defaultValue}
+      required={required}
+      style={compact ? { margin: 0 } : undefined}
+    >
+          {allowAny ? (
+            <option value="">Any year</option>
+          ) : (
+            <option value="">{placeholder}</option>
+          )}
+          {YEAR_OPTIONS.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+          {legacy ? (
+            <option value={defaultValue}>{defaultValue}</option>
+          ) : null}
+    </select>
+  );
+
+  return (
+    <div style={{ marginBottom: compact ? 0 : 4 }}>
+      {hideLabel ? field : <label>{label}{field}</label>}
     </div>
   );
 }
