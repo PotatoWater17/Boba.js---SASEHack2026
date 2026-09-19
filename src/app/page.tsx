@@ -87,11 +87,11 @@ export default async function IntroPage() {
           <p className="eyebrow">Built for college students</p>
           <div className="brand-lockup">
             <h1 className="page-title">StudyBuddyBoard</h1>
-            <p className="tagline">Fuel the grind</p>
+            <p className="tagline">Fuel The Grind</p>
           </div>
-          <p style={{ fontSize: 18, maxWidth: 520 }}>
+          <p style={{ fontSize: 18, maxWidth: 520, marginTop: 24 }}>
             Stop cramming alone before exams. StudyBuddyBoard helps you find students like you who
-            are also looking to prep, plan out the study group, and stay connected!
+            are also looking to prepare, plan out the study group, and stay connected!
           </p>
           <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link className="btn-accent" href={me ? "/dashboard" : "/login"}>
@@ -111,31 +111,32 @@ export default async function IntroPage() {
       </div>
 
       <section className="section">
-        <h2 className="section-title">What this site is for</h2>
+        <h2 className="section-title">About Us</h2>
         <p className="lead">
-          StudyBuddyBoard is a campus study-group board for any college student. You post or join
-          meetups by subject and topic, browse who&apos;s attending, and message your group — all in
-          one place instead of hopping between chats and random flyers.
+          We built StudyBuddyBoard so you don&apos;t have to cram by yourself. Post a meetup, jump into
+          one for your class, see who&apos;s going, and keep the group chat in one place — no more
+          hunting through random group chats and flyers.
         </p>
       </section>
 
       <section className="section">
-        <h2 className="section-title">Why use us</h2>
+        <h2 className="section-title">Why StudyBuddyBoard?</h2>
         <ul className="why-list">
           <li>
-            <b>Class-first browsing.</b> Filter by course so you land with people in the same class,
-            not a random hangout.
+            <b>Your class, your people.</b> Filter by the course you&apos;re actually taking so you
+            land with classmates, not a random hangout.
           </li>
           <li>
-            <b>Transparent groups.</b> See attendees, group size, location, and topics before you
-            join.
+            <b>No surprises.</b> Check who&apos;s going, how big the group is, where you&apos;re meeting,
+            and what you&apos;ll cover before you join.
           </li>
           <li>
-            <b>Profiles that help.</b> List classes you need help in and classes you can help with so
-            buddies know how to work together.
+            <b>Help each other out.</b> Put down what you need help with and what you can teach so
+            it&apos;s easy to find a good study fit.
           </li>
           <li>
-            <b>Simple on purpose.</b> No complicated feed — just meetups, people, and a group chat.
+            <b>Kept it simple.</b> No noisy feed — just meetups, people, and a chat to stay on the
+            same page.
           </li>
         </ul>
       </section>

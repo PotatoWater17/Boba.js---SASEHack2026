@@ -45,6 +45,7 @@ const EXTRA = [
 ] as const;
 
 async function main() {
+  await prisma.directMessage.deleteMany();
   await prisma.friendship.deleteMany();
   await prisma.message.deleteMany();
   await prisma.member.deleteMany();
@@ -101,11 +102,122 @@ async function main() {
 
   const hosts = [jordan, alex, sam];
 
+  const henry = await prisma.user.create({
+    data: {
+      email: "henry@auburn.edu",
+      password: hash("Password1!"),
+      firstName: "Henry",
+      lastName: "Park",
+      pronouns: "he/him",
+      year: "Junior",
+      major: "Computer Science",
+      university: "Auburn University",
+      bio: "Always down for a late library session.",
+      needHelp: "Physics 1",
+      canHelp: "Intro to Programming",
+    },
+  });
+  const hailey = await prisma.user.create({
+    data: {
+      email: "hailey@auburn.edu",
+      password: hash("Password1!"),
+      firstName: "Hailey",
+      lastName: "Brooks",
+      pronouns: "she/her",
+      year: "Sophomore",
+      major: "Mathematics",
+      university: "Auburn University",
+      bio: "Quizlet queen. Calc 2 forever.",
+      needHelp: "Calc 2",
+      canHelp: "Statistics",
+    },
+  });
+
+  const ryan = await prisma.user.create({
+    data: {
+      email: "ryanh@auburn.edu",
+      password: hash("RyanH"),
+      firstName: "Ryan",
+      lastName: "H",
+      year: "Junior",
+      major: "Computer Science",
+      university: "Auburn University",
+      bio: "Dev. Usually in the library or on a whiteboard.",
+      needHelp: "Calc 2",
+      canHelp: "Intro to Programming",
+    },
+  });
+  const aiden = await prisma.user.create({
+    data: {
+      email: "aidenb@auburn.edu",
+      password: hash("AidenB"),
+      firstName: "Aiden",
+      lastName: "B",
+      year: "Sophomore",
+      major: "Computer Science",
+      university: "Auburn University",
+      bio: "Dev. Down to grind practice problems.",
+      needHelp: "Data Structures",
+      canHelp: "Intro to Programming",
+    },
+  });
+  const bryan = await prisma.user.create({
+    data: {
+      email: "bryanm@auburn.edu",
+      password: hash("BryanM"),
+      firstName: "Bryan",
+      lastName: "M",
+      year: "Junior",
+      major: "Software Engineering",
+      university: "Auburn University",
+      bio: "Dev. Exam reviews and late night debugging.",
+      needHelp: "Physics 1",
+      canHelp: "Software Engineering",
+    },
+  });
+  const daniel = await prisma.user.create({
+    data: {
+      email: "danielk@auburn.edu",
+      password: hash("DanielK"),
+      firstName: "Daniel",
+      lastName: "K",
+      year: "Sophomore",
+      major: "Computer Science",
+      university: "Auburn University",
+      bio: "Dev. Looking for a regular study crew.",
+      needHelp: "Discrete Math",
+      canHelp: "Calc 1",
+    },
+  });
+
   await prisma.friendship.create({
     data: { fromId: jordan.id, toId: alex.id, status: "accepted" },
   });
   await prisma.friendship.create({
+    data: { fromId: jordan.id, toId: henry.id, status: "accepted" },
+  });
+  await prisma.friendship.create({
+    data: { fromId: jordan.id, toId: hailey.id, status: "accepted" },
+  });
+  await prisma.friendship.create({
     data: { fromId: sam.id, toId: jordan.id, status: "pending" },
+  });
+  const team = [ryan, aiden, bryan, daniel];
+  for (let i = 0; i < team.length; i++) {
+    for (let j = i + 1; j < team.length; j++) {
+      await prisma.friendship.create({
+        data: { fromId: team[i].id, toId: team[j].id, status: "accepted" },
+      });
+    }
+  }
+
+  const ago = (mins: number) => new Date(Date.now() - mins * 60 * 1000);
+  await prisma.directMessage.createMany({
+    data: [
+      { fromId: alex.id, toId: jordan.id, text: "Hey!", createdAt: ago(24) },
+      { fromId: henry.id, toId: jordan.id, text: "We're so cooked 😭", createdAt: ago(5 * 60) },
+      { fromId: hailey.id, toId: jordan.id, text: "Can you share the Quizlet?", createdAt: ago(2 * 24 * 60) },
+    ],
   });
 
   await prisma.meeting.create({
@@ -174,7 +286,7 @@ async function main() {
     });
   }
 
-  console.log("seeded. login: jsmith@auburn.edu / Password1!");
+  console.log("seeded. team: ryanh / aidenb / bryanm / danielk @auburn.edu (RyanH, AidenB, BryanM, DanielK)");
 }
 
 main()

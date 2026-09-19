@@ -107,6 +107,22 @@ export function ymd(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+export function timeAgo(date: Date) {
+  const min = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} minute${min === 1 ? "" : "s"} ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
+  const week = Math.floor(day / 7);
+  if (week < 5) return `${week} week${week === 1 ? "" : "s"} ago`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month} month${month === 1 ? "" : "s"} ago`;
+  const year = Math.max(1, Math.floor(day / 365));
+  return `${year} year${year === 1 ? "" : "s"} ago`;
+}
+
 /** Higher score = better match to the student's profile preferences. */
 export function meetingMatchScore(
   subject: string,
@@ -131,3 +147,53 @@ export function meetingMatchScore(
 }
 
 export const PAGE_SIZE = 10;
+
+function classOverlap(a: string, b: string) {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+/** Score another student against your classes, campus, and major. */
+export function buddyMatch(
+  me: { needHelp: string; canHelp: string; major: string; university?: string },
+  other: { needHelp: string; canHelp: string; major: string; university?: string },
+) {
+  const myNeed = splitList(me.needHelp);
+  const myHelp = splitList(me.canHelp);
+  const theirNeed = splitList(other.needHelp);
+  const theirHelp = splitList(other.canHelp);
+  const reasons: string[] = [];
+  let score = 0;
+
+  for (const c of myNeed) {
+    if (theirHelp.some((x) => classOverlap(x, c))) {
+      score += 100;
+      reasons.push(`can help with ${c}`);
+    }
+  }
+  for (const c of myHelp) {
+    if (theirNeed.some((x) => classOverlap(x, c))) {
+      score += 80;
+      reasons.push(`needs help in ${c}`);
+    }
+  }
+  for (const c of myNeed) {
+    if (theirNeed.some((x) => classOverlap(x, c))) {
+      score += 40;
+      if (!reasons.some((r) => r.toLowerCase().includes(c.toLowerCase()))) {
+        reasons.push(`also grinding ${c}`);
+      }
+    }
+  }
+  if (me.university && other.university && me.university.toLowerCase() === other.university.toLowerCase()) {
+    score += 50;
+    reasons.push("same campus");
+  }
+  if (me.major && other.major && me.major.toLowerCase() === other.major.toLowerCase()) {
+    score += 20;
+    reasons.push("same major");
+  }
+
+  return { score, reasons };
+}

@@ -110,22 +110,21 @@ button {
   flex-shrink: 0;
   width: fit-content;
   color: var(--purple);
-  line-height: 1;
-  gap: 0;
+  gap: 2px;
 }
 
 .nav-brand b {
   display: block;
-  line-height: 1;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .nav-brand .tagline {
-  align-self: flex-end;
-  margin: -4px 0 0;
-  padding: 1px 8px;
-  font-size: 11px;
-  position: relative;
-  z-index: 1;
+  margin: 0;
+  padding: 2px 9px;
+  font-size: 10px;
 }
 
 .nav-links {
@@ -255,35 +254,45 @@ button.pill {
   align-items: flex-start;
   width: fit-content;
   max-width: 100%;
+  gap: 4px;
 }
 
 .brand-lockup .page-title {
   margin: 0;
-  line-height: 1;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
 .hero .page-title {
-  font-size: clamp(26px, 7vw, 36px);
+  font-size: clamp(28px, 7vw, 42px);
+}
+
+.find-hub {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+  margin-top: 8px;
+}
+
+.find-hub-btn {
+  text-align: center;
+  padding: 14px 18px;
+  font-size: 16px;
 }
 
 .tagline {
   display: inline-block;
-  margin: 6px 0 14px;
-  padding: 3px 10px;
-  font-size: 16px;
+  margin: 0 0 14px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 700;
-  color: #222;
-  background: var(--accent);
+  color: #1a1a1a;
+  background: #f5b400;
   border-radius: 999px;
 }
 
 .brand-lockup .tagline {
-  align-self: flex-end;
-  margin: -8px 0 14px;
-  padding: 2px 10px;
-  position: relative;
-  z-index: 1;
+  margin: 0 0 4px;
 }
 
 .section {
@@ -784,4 +793,195 @@ button.cal-day:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.found-page {
+  max-width: 520px;
+  text-align: center;
+  padding-top: 56px;
+}
+
+.found-page .page-title {
+  margin-bottom: 28px;
+}
+
+.found-card {
+  background: #f3f3f3;
+  border-radius: 12px;
+  padding: 36px 28px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.found-card h2 {
+  margin: 8px 0 0;
+  font-size: 22px;
+}
+
+.found-card p {
+  margin: 0;
+  color: #555;
+  max-width: 360px;
+  line-height: 1.45;
+}
+
+.found-actions {
+  margin-top: 24px;
+}
+
+.found-more {
+  margin-top: 40px;
+  text-align: left;
+}
+
+.found-list {
+  display: grid;
+  gap: 10px;
+}
+
+.found-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.found-mini-why {
+  display: block;
+  margin-top: 2px;
+  color: #666;
+  font-size: 13px;
+}
+
+.chats-page {
+  max-width: 520px;
+}
+
+.chat-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.chat-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chat-list {
+  display: grid;
+  gap: 10px;
+}
+
+.chat-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f6f6f6;
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: inherit;
+}
+
+.chat-row:hover {
+  background: #efefef;
+}
+
+.chat-row-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+  flex: 1;
+}
+
+.chat-row-text {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.chat-row-preview,
+.chat-row-time {
+  color: #666;
+}
+
+.dm-thread {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafafa;
+}
+
+.dm-bubble {
+  align-self: flex-start;
+  max-width: 80%;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.dm-bubble.mine {
+  align-self: flex-end;
+  background: #eef0ff;
+  border-color: #d8dcff;
+}
+
+.dm-bubble-meta {
+  font-size: 11px;
+  color: #777;
+  margin-bottom: 2px;
+}
+
+.dm-compose {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dm-attach {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.dm-attach input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dm-pic {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+.dm-file {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--purple);
+  text-decoration: underline;
+  font-size: 13px;
+  word-break: break-all;
 }

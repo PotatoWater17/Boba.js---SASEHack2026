@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   ],
   experimental: {
     serverActions: {
+      bodySizeLimit: "10mb",
       allowedOrigins: [
         "10.2.216.3:3000",
         "100.74.166.121:3000",

@@ -109,7 +109,9 @@ export default async function DashboardPage({
       <section className="dash-section">
         <div className="dash-section-head">
           <h2>Friends</h2>
-          <span className="dash-hint">{friends.length} connected</span>
+          <Link href="/friends" className="dash-hint" style={{ textDecoration: "underline" }}>
+            {friends.length} connected · chats
+          </Link>
         </div>
         {incoming.length > 0 ? (
           <div className="dash-meet-list" style={{ marginBottom: 14 }}>
@@ -153,7 +155,7 @@ export default async function DashboardPage({
         ) : (
           <div className="dash-friends">
             {friends.map((f) => (
-              <Link key={f.id} href={`/profile/${f.id}`} className="dash-friend">
+              <Link key={f.id} href={`/friends/${f.id}`} className="dash-friend">
                 <span className="avatar">{initials(f.firstName, f.lastName)}</span>
                 <b>
                   {f.firstName} {f.lastName}

@@ -39,7 +39,7 @@ export default async function LoginPage({
             style={{ borderRadius: 12, display: "block" }}
           />
           <div className="tagline" style={{ margin: "8px 0 0" }}>
-            Fuel the grind
+            Fuel The Grind
           </div>
         </div>
         <form action={login} style={{ flex: 1 }}>
@@ -55,7 +55,8 @@ export default async function LoginPage({
             Login
           </button>
           <p style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
-            Demo: jsmith@auburn.edu / Password1!
+            Devs: ryanh@auburn.edu / RyanH · aidenb@auburn.edu / AidenB · bryanm@auburn.edu / BryanM ·
+            danielk@auburn.edu / DanielK
           </p>
         </form>
       </div>

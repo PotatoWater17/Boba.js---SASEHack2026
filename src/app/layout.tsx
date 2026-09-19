@@ -19,7 +19,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="nav">
           <Link href="/" className="nav-brand">
             <b>StudyBuddyBoard</b>
-            <span className="tagline">Fuel the grind</span>
+            <span className="tagline">Fuel The Grind</span>
           </Link>
           {me ? (
             <>

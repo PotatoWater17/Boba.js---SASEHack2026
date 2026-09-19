@@ -26,6 +26,8 @@ model User {
   meetings   Meeting[] @relation("Host")
   friendsFrom Friendship[] @relation("FriendsFrom")
   friendsTo   Friendship[] @relation("FriendsTo")
+  dmsFrom     DirectMessage[] @relation("DmFrom")
+  dmsTo       DirectMessage[] @relation("DmTo")
 }
 
 model Meeting {
@@ -80,4 +82,17 @@ model Message {
   createdAt DateTime @default(now())
   meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DirectMessage {
+  id        String   @id @default(cuid())
+  fromId    String
+  toId      String
+  text      String   @default("")
+  fileName  String   @default("")
+  fileKey   String   @default("")
+  fileMime  String   @default("")
+  createdAt DateTime @default(now())
+  from      User     @relation("DmFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        User     @relation("DmTo", fields: [toId], references: [id], onDelete: Cascade)
 }

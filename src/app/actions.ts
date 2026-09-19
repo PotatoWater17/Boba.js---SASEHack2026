@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { COURSES, groupKindById, MEETUP_STYLES } from "@/courses";
+import { saveAttach } from "@/files";
 import { resolveUniversity } from "@/universities";
 import { clearUser, formatTimeInput, getMe, hashPassword, isStrongPassword, isValidMeetDate, prisma, setUser, splitList } from "@/lib";
 
@@ -197,26 +198,32 @@ async function friendshipBetween(a: string, b: string) {
   });
 }
 
+function nextPath(formData: FormData, fallback: string) {
+  const next = String(formData.get("next") || "") || fallback;
+  return next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+}
+
 export async function addFriend(formData: FormData) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  if (!userId || userId === me.id) redirect("/dashboard");
+  const next = nextPath(formData, userId ? `/profile/${userId}` : "/dashboard");
+  if (!userId || userId === me.id) redirect(next);
 
   const other = await prisma.user.findUnique({ where: { id: userId } });
-  if (!other) redirect("/dashboard");
+  if (!other) redirect(next);
 
   const existing = await friendshipBetween(me.id, userId);
-  if (existing?.status === "accepted") redirect(`/profile/${userId}`);
-  if (existing?.fromId === me.id) redirect(`/profile/${userId}`);
+  if (existing?.status === "accepted") redirect(next);
+  if (existing?.fromId === me.id) redirect(next);
   if (existing && existing.fromId === userId && existing.status === "pending") {
     await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
-    redirect(`/profile/${userId}`);
+    redirect(next);
   }
 
   await prisma.friendship.create({ data: { fromId: me.id, toId: userId, status: "pending" } });
-  redirect(`/profile/${userId}`);
+  redirect(next);
 }
 
 export async function acceptFriend(formData: FormData) {
@@ -230,6 +237,39 @@ export async function acceptFriend(formData: FormData) {
     await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
   }
   redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+}
+
+export async function sendDm(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const text = String(formData.get("text") || "").trim().slice(0, 500);
+  if (!userId) redirect("/friends");
+
+  const other = await prisma.user.findUnique({ where: { id: userId } });
+  if (!other || other.id === me.id) redirect("/friends");
+
+  const raw = formData.get("file");
+  const file = raw instanceof File && raw.size > 0 ? raw : null;
+  let fileName = "";
+  let fileKey = "";
+  let fileMime = "";
+
+  if (file) {
+    const saved = await saveAttach(file);
+    if ("error" in saved) redirect(`/friends/${userId}?error=${saved.error}`);
+    fileName = saved.name;
+    fileKey = saved.key;
+    fileMime = saved.mime;
+  }
+
+  if (!text && !fileKey) redirect(`/friends/${userId}?error=empty`);
+
+  await prisma.directMessage.create({
+    data: { fromId: me.id, toId: userId, text, fileName, fileKey, fileMime },
+  });
+  redirect(`/friends/${userId}`);
 }
 
 export async function removeFriend(formData: FormData) {

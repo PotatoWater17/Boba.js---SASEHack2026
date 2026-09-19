@@ -119,6 +119,9 @@ export default async function ProfilePage({
 
       {!isMe ? (
         <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
+          <Link className="btn" href={`/friends/${user.id}`}>
+            Message
+          </Link>
           {friends ? (
             <>
               <span className="pill active">Friends</span>
@@ -157,7 +160,7 @@ export default async function ProfilePage({
           ) : (
             <form action={addFriend}>
               <input type="hidden" name="userId" value={user.id} />
-              <button type="submit" className="btn">
+              <button type="submit" className="pill">
                 Add friend
               </button>
             </form>
