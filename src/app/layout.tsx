@@ -9,6 +9,7 @@ import { NavLinks } from "@/nav";
 import { ThemeInit, ThemeToggle } from "@/theme";
 import { MessageToasts } from "@/toasts";
 import "./globals.css";
+import "../motion/motion.css";
 
 export const metadata: Metadata = {
   title: "StudyBuddyBoard",
@@ -81,9 +82,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </form>
               </div>
             ) : (
-              <Link className="btn" href="/login">
-                Login / Sign Up
-              </Link>
+              <div className="nav-auth-links">
+                <Link className="btn btn-ghost" href="/login">
+                  Log in
+                </Link>
+                <Link className="btn" href="/signup">
+                  Sign up
+                </Link>
+              </div>
             )}
           </div>
         </header>

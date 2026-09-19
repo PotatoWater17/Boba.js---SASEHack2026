@@ -2,7 +2,15 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { createMeeting, leaveMeeting, updateMeeting } from "@/app/actions";
-import { COURSES, GROUP_KINDS, LOCATIONS, MEETUP_STYLES, topicsFor, type GroupKindId } from "@/courses";
+import {
+  COURSES,
+  GROUP_KINDS,
+  LOCATIONS,
+  MEETUP_STYLES,
+  searchCourses,
+  topicsFor,
+  type GroupKindId,
+} from "@/courses";
 import { MAJORS } from "@/majors";
 import { searchUniversities, UNIVERSITIES } from "@/universities";
 import { isYearOption, YEAR_OPTIONS } from "@/years";
@@ -17,14 +25,31 @@ export function ClassBubbles({
   initial?: string[];
 }) {
   const [items, setItems] = useState<string[]>(initial);
-  const [custom, setCustom] = useState("");
   const [pick, setPick] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const trimmed = pick.trim();
+  const suggestions = useMemo(() => {
+    return searchCourses(pick, 24).filter(
+      (course) => !items.some((item) => item.toLowerCase() === course.toLowerCase()),
+    );
+  }, [pick, items]);
+  const exact = useMemo(
+    () => COURSES.find((course) => course.toLowerCase() === trimmed.toLowerCase()),
+    [trimmed],
+  );
+  const alreadyAdded = trimmed
+    ? items.some((item) => item.toLowerCase() === trimmed.toLowerCase())
+    : false;
+  const showCustom = trimmed.length >= 2 && !exact && !alreadyAdded;
 
   function add(value: string) {
     const cleaned = value.trim();
     if (!cleaned) return;
     if (items.some((item) => item.toLowerCase() === cleaned.toLowerCase())) return;
     setItems([...items, cleaned]);
+    setPick("");
+    setOpen(false);
   }
 
   function remove(value: string) {
@@ -32,70 +57,240 @@ export function ClassBubbles({
   }
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ marginBottom: 6 }}>{label}</div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-        <select
-          className="field"
-          style={{ margin: 0, width: "auto", minWidth: 180 }}
-          value={pick}
-          onChange={(e) => setPick(e.target.value)}
-        >
-          <option value="">Pick a class…</option>
-          {COURSES.map((course) => (
-            <option key={course} value={course}>
-              {course}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            add(pick);
-            setPick("");
-          }}
-        >
+    <div className="class-bubbles">
+      <div className="class-bubbles-label">{label}</div>
+      <div className="class-bubbles-row">
+        <div className="topic-picker class-bubbles-picker">
+          <input
+            className="field"
+            value={pick}
+            placeholder="Search courses or type your own"
+            maxLength={80}
+            autoComplete="off"
+            aria-label={label}
+            onFocus={() => setOpen(true)}
+            onChange={(e) => {
+              setPick(e.target.value);
+              setOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (suggestions[0]) add(suggestions[0]);
+                else if (showCustom) add(trimmed);
+              }
+            }}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+          />
+          {open ? (
+            <div className="topic-menu">
+              {showCustom ? (
+                <button
+                  type="button"
+                  className="topic-option topic-option-custom"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => add(trimmed)}
+                >
+                  Add &quot;{trimmed}&quot;
+                </button>
+              ) : null}
+              {suggestions.map((course) => (
+                <button
+                  key={course}
+                  type="button"
+                  className="topic-option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => add(course)}
+                >
+                  {course}
+                </button>
+              ))}
+              {suggestions.length === 0 && !showCustom ? (
+                <div className="topic-empty">
+                  {trimmed ? "No match — type a course name to add it." : "Start typing to search 600+ courses."}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <button type="button" className="btn class-bubbles-add" disabled={!trimmed} onClick={() => add(pick)}>
           Add
         </button>
       </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+      {items.length ? (
+        <div className="class-bubbles-chips">
+          {items.map((item) => (
+            <span key={item} className="bubble">
+              {item}
+              <button type="button" className="bubble-x" onClick={() => remove(item)} aria-label={`Remove ${item}`}>
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted class-bubbles-hint">Search 600+ courses or type your own — used for buddy and group matching.</p>
+      )}
+      <input type="hidden" name={name} value={items.join(", ")} />
+    </div>
+  );
+}
+
+/** Exam prep fields for buddy matching and profile. */
+export function ExamPrepFields({
+  defaultCourse = "",
+  defaultDate = "",
+  defaultTopics = [],
+  defaultStyle = "",
+  showYearFilter = false,
+  defaultYear = "",
+  allowPastExamDate = false,
+}: {
+  defaultCourse?: string;
+  defaultDate?: string;
+  defaultTopics?: string[];
+  defaultStyle?: string;
+  showYearFilter?: boolean;
+  defaultYear?: string;
+  allowPastExamDate?: boolean;
+}) {
+  const [course, setCourse] = useState(defaultCourse);
+  const [topics, setTopics] = useState<string[]>(defaultTopics);
+  const [topicDraft, setTopicDraft] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const courseSuggestions = useMemo(() => searchCourses(course, 50), [course]);
+  const topicSuggestions = useMemo(() => topicsFor(course), [course]);
+  const filteredTopics = useMemo(() => {
+    const q = topicDraft.trim().toLowerCase();
+    if (!q) return topicSuggestions.slice(0, 12);
+    return topicSuggestions.filter((t) => t.toLowerCase().includes(q)).slice(0, 12);
+  }, [topicSuggestions, topicDraft]);
+
+  function addTopic(value: string) {
+    const cleaned = value.trim();
+    if (cleaned.length < 2) return;
+    if (topics.some((t) => t.toLowerCase() === cleaned.toLowerCase())) return;
+    setTopics([...topics, cleaned]);
+    setTopicDraft("");
+  }
+
+  return (
+    <div className="exam-prep-fields">
+      <p className="exam-prep-lead">Upcoming exam prep (optional — improves buddy matches)</p>
+      <label>
+        Exam course
         <input
           className="field"
-          style={{ margin: 0, flex: 1 }}
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="Or type a custom class"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add(custom);
-              setCustom("");
-            }
-          }}
+          name="examCourse"
+          list="exam-course-suggestions"
+          value={course}
+          onChange={(e) => setCourse(e.target.value)}
+          placeholder="e.g. Calc 2, Organic Chemistry 1"
+          maxLength={80}
+          autoComplete="off"
         />
-        <button
-          type="button"
-          className="pill"
-          onClick={() => {
-            add(custom);
-            setCustom("");
-          }}
-        >
-          Add custom
-        </button>
-      </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minHeight: 28 }}>
-        {items.map((item) => (
-          <span key={item} className="bubble">
-            {item}
-            <button type="button" className="bubble-x" onClick={() => remove(item)} aria-label={`Remove ${item}`}>
-              ×
+        <datalist id="exam-course-suggestions">
+          {courseSuggestions.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
+      </label>
+      <label>
+        Exam date
+        <input
+          className="field"
+          type="date"
+          name="examDate"
+          defaultValue={defaultDate}
+          min={allowPastExamDate ? undefined : new Date().toISOString().slice(0, 10)}
+        />
+      </label>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 6 }}>Topics to focus on</div>
+        <div className="topic-picker">
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              className="field"
+              style={{ marginBottom: 0, flex: 1 }}
+              value={topicDraft}
+              placeholder={course ? "Search topics or type your own" : "Pick a course first for suggestions"}
+              autoComplete="off"
+              onFocus={() => setOpen(true)}
+              onChange={(e) => {
+                setTopicDraft(e.target.value);
+                setOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTopic(topicDraft);
+                  setOpen(false);
+                }
+              }}
+              onBlur={() => setTimeout(() => setOpen(false), 150)}
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                addTopic(topicDraft);
+                setOpen(false);
+              }}
+            >
+              Add
             </button>
-          </span>
-        ))}
+          </div>
+          {open && filteredTopics.length ? (
+            <div className="topic-menu">
+              {filteredTopics.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className="topic-option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    addTopic(t);
+                    setOpen(false);
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minHeight: 28, marginTop: 8 }}>
+          {topics.map((item) => (
+            <span key={item} className="bubble">
+              {item}
+              <button
+                type="button"
+                className="bubble-x"
+                onClick={() => setTopics(topics.filter((t) => t !== item))}
+                aria-label={`Remove ${item}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <input type="hidden" name="examTopics" value={topics.join(", ")} />
       </div>
-      <input type="hidden" name={name} value={items.join(", ")} />
+      <label>
+        Preferred study style
+        <select className="field" name="studyStyle" defaultValue={defaultStyle}>
+          <option value="">Any style</option>
+          {MEETUP_STYLES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </label>
+      {showYearFilter ? (
+        <YearPicker label="Filter by year (optional)" defaultValue={defaultYear} allowAny placeholder="Any year" />
+      ) : null}
     </div>
   );
 }
@@ -333,6 +528,7 @@ export function SubjectTopicFields({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
+  const subjectSuggestions = useMemo(() => searchCourses(subject, 50), [subject]);
   const topics = topicsFor(subject);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -352,10 +548,10 @@ export function SubjectTopicFields({
     <>
       <label>
         Subject
-        <select
+        <input
           className="field"
           name="subject"
-          required
+          list="subject-suggestions"
           value={subject}
           onChange={(e) => {
             setSubject(e.target.value);
@@ -363,13 +559,16 @@ export function SubjectTopicFields({
             setQuery("");
             setOpen(true);
           }}
-        >
-          {COURSES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+          placeholder="Search 600+ courses or type your own"
+          required
+          maxLength={80}
+          autoComplete="off"
+        />
+        <datalist id="subject-suggestions">
+          {subjectSuggestions.map((c) => (
+            <option key={c} value={c} />
           ))}
-        </select>
+        </datalist>
       </label>
 
       <div style={{ marginBottom: 12 }}>
@@ -446,7 +645,7 @@ export function SubjectTopicFields({
           ))}
         </div>
         <input type="hidden" name="topic" value={selected.join(", ")} />
-        <p style={{ fontSize: 13, color: "#666", margin: "6px 0 0" }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 0" }}>
           Pick from the list or add a custom topic. You need at least one.
         </p>
       </div>

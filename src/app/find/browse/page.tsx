@@ -31,7 +31,8 @@ export default async function BrowseMeetupsPage({
   const me = await getMe();
   if (!me) redirect("/login");
 
-  const { subject, page: pageRaw, mine, kind, style, uni: uniRaw } = await searchParams;
+  const { subject: subjectRaw, page: pageRaw, mine, kind, style, uni: uniRaw } = await searchParams;
+  const subject = (subjectRaw || "").trim();
   const page = Math.max(1, Number(pageRaw) || 1);
   const onlyMine = mine === "1";
   const myClasses = [...splitList(me.needHelp), ...splitList(me.canHelp)];
@@ -40,7 +41,7 @@ export default async function BrowseMeetupsPage({
 
   const meetings = await prisma.meeting.findMany({
     where: {
-      ...(subject ? { subject } : {}),
+      ...(subject ? { subject: { contains: subject } } : {}),
       ...(kind ? { groupKind: kind } : {}),
       ...(style ? { style } : {}),
       ...(uniFilter ? { university: { contains: uniFilter } } : {}),
@@ -124,14 +125,20 @@ export default async function BrowseMeetupsPage({
             <option key={u} value={u} />
           ))}
         </datalist>
-        <select className="field" name="subject" defaultValue={subject || ""} style={{ width: "auto", margin: 0 }}>
-          <option value="">All subjects</option>
+        <input
+          className="field"
+          name="subject"
+          list="browse-subject-list"
+          defaultValue={subject || ""}
+          placeholder="All subjects"
+          style={{ width: 200, margin: 0 }}
+          maxLength={80}
+        />
+        <datalist id="browse-subject-list">
           {COURSES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+            <option key={c} value={c} />
           ))}
-        </select>
+        </datalist>
         <select className="field" name="kind" defaultValue={kind || ""} style={{ width: "auto", margin: 0 }}>
           <option value="">Any group size</option>
           {GROUP_KINDS.map((k) => (

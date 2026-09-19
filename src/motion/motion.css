@@ -1,0 +1,90 @@
+/**
+ * MOTION bundle — optional polish animations.
+ * Revert: see REVERT-MOTION.md (remove layout import + delete src/motion/).
+ */
+
+:root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-duration: 0.48s;
+  --motion-stagger: 45ms;
+}
+
+@keyframes motion-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 1 — About hero load stagger */
+.motion-hero-stage .motion-hero-item {
+  opacity: 0;
+  animation: motion-fade-up var(--motion-duration) var(--motion-ease) forwards;
+}
+
+.motion-hero-d1 {
+  animation-delay: 0ms;
+}
+
+.motion-hero-d2 {
+  animation-delay: 120ms;
+}
+
+.motion-hero-d3 {
+  animation-delay: 220ms;
+}
+
+.motion-hero-d4 {
+  animation-delay: 320ms;
+}
+
+.motion-hero-d5 {
+  animation-delay: 420ms;
+}
+
+.motion-hero-d6 {
+  animation-delay: 520ms;
+}
+
+.about-scroll-hint.motion-hero-item {
+  animation-delay: 640ms;
+}
+
+/* 2 — Page enter (dashboard, find, profile) */
+.motion-page-enter {
+  animation: motion-page-in var(--motion-duration) var(--motion-ease) both;
+}
+
+/* 3 — List stagger */
+.motion-stagger-item {
+  opacity: 0;
+  animation: motion-fade-up calc(var(--motion-duration) * 0.92) var(--motion-ease) forwards;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-hero-stage .motion-hero-item,
+  .motion-page-enter,
+  .motion-stagger-item {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}

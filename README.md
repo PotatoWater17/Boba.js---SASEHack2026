@@ -4,37 +4,25 @@ SASEHack 2026 — study group matching for college students.
 
 ## Demo accounts
 
-**Main demo user**
+See **[DEMO-DATA.md](./DEMO-DATA.md)** for full profiles, all 39 meme accounts, friendships, DMs, group chats, and restore commands.
 
-- Email: `jsmith@auburn.edu`
-- Password: `Password1!`
-- School: Auburn University
+**Quick reference**
 
-**Dev team (Auburn, admin)**
+| Who | Email | Password |
+|-----|-------|----------|
+| Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
+| Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
+| Dev / admin | `aidenb@auburn.edu` | `AidenB` |
+| Dev / admin | `bryanm@auburn.edu` | `BryanM` |
+| Dev / admin | `danielk@auburn.edu` | `DanielK` |
 
-| Email | Password |
-|-------|----------|
-| `ryanh@auburn.edu` | `RyanH` |
-| `aidenb@auburn.edu` | `AidenB` |
-| `bryanm@auburn.edu` | `BryanM` |
-| `danielk@auburn.edu` | `DanielK` |
-
-**Other demo users** (spread across schools for browse/find demos)
-
-| Email | School |
-|-------|--------|
-| `alex@auburn.edu` | Georgia Tech |
-| `sam@auburn.edu` | The University of Alabama |
-| `henry@auburn.edu` | University of Georgia |
-| `hailey@auburn.edu` | Clemson University |
-
-All demo passwords above except the dev team use `Password1!`. The seed also includes ~39 meme parody accounts.
+Cross-school users: `alex@`, `sam@`, `henry@`, `hailey@` — all `Password1!`. Meme accounts: `*.meme@auburn.edu` etc. — all `Password1!`.
 
 ## How to run
 
 ```bash
 npm install
-npm run db:reset   # push schema + seed demo data
+npm run db:demo-full   # reset DB + seed + Ryan buddy network (see DEMO-DATA.md)
 npm run dev
 ```
 
@@ -49,10 +37,11 @@ npm run dev
 
 Then open http://localhost:3000
 
-To refresh dev-team accounts on an existing DB without wiping messages:
+To refresh without wiping (keeps existing messages where possible):
 
 ```bash
 npm run db:restore-team
 npm run db:patch-demo
-npm run db:refresh-avatars   # re-download profile photos from the web
+npm run db:ryan-friends
+npm run db:refresh-avatars   # optional — re-download profile photos
 ```

@@ -641,6 +641,10 @@ async function main() {
       bio: "Sophomore CS. I like whiteboard sessions and late library nights — usually grinding calc or discrete.",
       needHelp: "Calc 2, Physics 1",
       canHelp: "Intro to Programming, Discrete Math",
+      examCourse: "Calc 2",
+      examDate: dayOffset(12),
+      examTopics: "Series, U-substitution, Integration by parts",
+      studyStyle: "Exam review",
       photoKey: await portraitPhotoKey("jsmith@auburn.edu"),
     },
   });
@@ -658,6 +662,10 @@ async function main() {
       bio: "SE junior at Tech. I host exam reviews and I'm always down to walk through practice problems.",
       needHelp: "Data Structures",
       canHelp: "Calc 2, Linear Algebra",
+      examCourse: "Data Structures",
+      examDate: dayOffset(18),
+      examTopics: "Trees, heaps, Big-O analysis",
+      studyStyle: "Practice problems",
       photoKey: await portraitPhotoKey("alex@auburn.edu"),
     },
   });
@@ -675,6 +683,10 @@ async function main() {
       bio: "First year at Bama still figuring campus out. Looking for a regular calc buddy so I don't cram alone.",
       needHelp: "Calc 2",
       canHelp: "College Algebra",
+      examCourse: "Calc 2",
+      examDate: dayOffset(9),
+      examTopics: "U-substitution, Polar coordinates",
+      studyStyle: "Homework help",
       photoKey: await portraitPhotoKey("sam@auburn.edu"),
     },
   });
@@ -710,6 +722,10 @@ async function main() {
       bio: "Clemson math major. Quizlet queen. Calc 2 forever.",
       needHelp: "Calc 2",
       canHelp: "Statistics",
+      examCourse: "Calc 2",
+      examDate: dayOffset(11),
+      examTopics: "Series, Sequences, Taylor series",
+      studyStyle: "Exam review",
       photoKey: await portraitPhotoKey("hailey@auburn.edu"),
     },
   });

@@ -27,18 +27,21 @@ export default async function MeetingPage({
     include: {
       host: true,
       members: { include: { user: true } },
-      messages: {
-        include: {
-          user: true,
-          reactions: { include: { user: { select: { id: true, firstName: true } } } },
-        },
-        orderBy: { createdAt: "asc" },
-      },
     },
   });
   if (!meeting) notFound();
 
   const joined = meeting.members.some((m) => m.userId === me.id);
+  const messages = await prisma.message.findMany({
+    where: { meetingId: id },
+    include: {
+      user: true,
+      ...(joined
+        ? { reactions: { include: { user: { select: { id: true, firstName: true } } } } }
+        : {}),
+    },
+    orderBy: { createdAt: "asc" },
+  });
   const isOwner = meeting.hostId === me.id;
   const topics = splitList(meeting.topic);
 
@@ -215,10 +218,10 @@ export default async function MeetingPage({
       <h2>Group Chat</h2>
       <div className="card">
         <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minHeight: 160, marginBottom: 12 }}>
-          {meeting.messages.length === 0 ? (
+          {messages.length === 0 ? (
             <p className="text-muted">No messages yet.</p>
           ) : (
-            meeting.messages.map((msg) => (
+            messages.map((msg) => (
               <div key={msg.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
                 <Link href={`/profile/${msg.userId}`}>
                   <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
@@ -241,12 +244,14 @@ export default async function MeetingPage({
                   ) : (
                     <>
                       {msg.text}
-                      <ChatReactions
-                        kind="group"
-                        messageId={msg.id}
-                        meId={me.id}
-                        initial={packReactions(msg.reactions, me.id)}
-                      />
+                      {joined ? (
+                        <ChatReactions
+                          kind="group"
+                          messageId={msg.id}
+                          meId={me.id}
+                          initial={packReactions(msg.reactions ?? [], me.id)}
+                        />
+                      ) : null}
                     </>
                   )}
                 </div>

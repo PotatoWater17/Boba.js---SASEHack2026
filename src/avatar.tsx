@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { initials } from "@/lib";
+import { initials } from "@/utils";
 
 type Person = {
   id: string;

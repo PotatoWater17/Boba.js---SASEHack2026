@@ -12,7 +12,9 @@
     "db:reset": "prisma db push --force-reset && prisma db seed",
     "db:restore-team": "tsx scripts/restore-team.ts",
     "db:patch-demo": "tsx scripts/patch-demo-world.ts",
-    "db:refresh-avatars": "tsx scripts/refresh-avatars.ts"
+    "db:refresh-avatars": "tsx scripts/refresh-avatars.ts",
+    "db:ryan-friends": "tsx scripts/seed-ryan-friends.ts",
+    "db:demo-full": "npm run db:reset && npm run db:ryan-friends"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

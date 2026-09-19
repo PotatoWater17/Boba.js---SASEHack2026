@@ -26,6 +26,36 @@ const DEMO_UNIS: Record<string, string> = {
 
 const DEV_EMAILS = ["ryanh@auburn.edu", "aidenb@auburn.edu", "bryanm@auburn.edu", "danielk@auburn.edu"];
 
+const DEMO_EXAM: Record<
+  string,
+  { examCourse: string; examDate: string; examTopics: string; studyStyle: string }
+> = {
+  "jsmith@auburn.edu": {
+    examCourse: "Calc 2",
+    examDate: dayOffset(12),
+    examTopics: "Series, U-substitution, Integration by parts",
+    studyStyle: "Exam review",
+  },
+  "alex@auburn.edu": {
+    examCourse: "Data Structures",
+    examDate: dayOffset(18),
+    examTopics: "Trees, heaps, Big-O analysis",
+    studyStyle: "Practice problems",
+  },
+  "sam@auburn.edu": {
+    examCourse: "Calc 2",
+    examDate: dayOffset(9),
+    examTopics: "U-substitution, Polar coordinates",
+    studyStyle: "Homework help",
+  },
+  "hailey@auburn.edu": {
+    examCourse: "Calc 2",
+    examDate: dayOffset(11),
+    examTopics: "Series, Sequences, Taylor series",
+    studyStyle: "Exam review",
+  },
+};
+
 async function ensureMeeting(
   hostId: string,
   subject: string,
@@ -197,7 +227,14 @@ async function main() {
   await ensureDm(bryan.id, ryan.id, "Yeah I'll grab the whiteboard room");
   await ensureDm(daniel.id, aiden.id, "Almost — meet at the group I posted?");
 
-  console.log("Demo world patched (universities + dev meetups).");
+  for (const [email, exam] of Object.entries(DEMO_EXAM)) {
+    const u = await prisma.user.findUnique({ where: { email } });
+    if (u) {
+      await prisma.user.update({ where: { email }, data: exam });
+    }
+  }
+
+  console.log("Demo world patched (universities, exam prep, dev meetups).");
 }
 
 main()

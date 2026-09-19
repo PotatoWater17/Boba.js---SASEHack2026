@@ -35,7 +35,7 @@ export function DmCompose({ userId }: { userId: string }) {
   }
 
   return (
-    <form action={sendDm} className="dm-form" encType="multipart/form-data">
+    <form action={sendDm} className="dm-form">
       <input type="hidden" name="userId" value={userId} />
       {file ? (
         <div className="dm-preview">

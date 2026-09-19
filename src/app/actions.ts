@@ -1,13 +1,24 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { COURSES, groupKindById, MEETUP_STYLES } from "@/courses";
+import { groupKindById, MEETUP_STYLES, resolveCourse } from "@/courses";
 import { nextAccountNo } from "@/account-id";
 import { getAdmin } from "@/admin";
 import { removeAttach, saveAttach, saveAvatar, removeAvatar } from "@/files";
 import { resolveUniversity } from "@/universities";
 import { resolveMajor } from "@/majors";
-import { clearUser, formatTimeInput, getMe, hashPassword, isStrongPassword, isValidMeetDate, prisma, setUser, splitList } from "@/lib";
+import {
+  clearUser,
+  formatTimeInput,
+  getMe,
+  hashPassword,
+  isStrongPassword,
+  isValidMeetDate,
+  parseDateField,
+  prisma,
+  setUser,
+  splitList,
+} from "@/lib";
 
 export async function signup(formData: FormData) {
   const email = String(formData.get("email") || "")
@@ -20,13 +31,13 @@ export async function signup(formData: FormData) {
   const university = resolveUniversity(String(formData.get("university") || ""));
 
   if (!email || !password || !firstName || !lastName || !university) {
-    redirect("/login?error=fill");
+    redirect("/signup?error=fill");
   }
-  if (password !== confirm) redirect("/login?error=match");
-  if (!isStrongPassword(password)) redirect("/login?error=weak");
+  if (password !== confirm) redirect("/signup?error=match");
+  if (!isStrongPassword(password)) redirect("/signup?error=weak");
 
   const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) redirect("/login?error=exists");
+  if (exists) redirect("/signup?error=exists");
 
   const accountNo = await nextAccountNo();
   const user = await prisma.user.create({
@@ -93,7 +104,7 @@ export async function requestPasswordReset(formData: FormData) {
     .trim()
     .slice(0, 300);
 
-  if (!email) redirect("/login?forgot=fill");
+  if (!email) redirect("/forgot-password?error=fill");
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (user) {
@@ -112,7 +123,7 @@ export async function requestPasswordReset(formData: FormData) {
     }
   }
 
-  redirect("/login?forgot=sent");
+  redirect("/forgot-password?sent=1");
 }
 
 export async function adminResetPassword(formData: FormData) {
@@ -160,6 +171,12 @@ export async function dismissPasswordReset(formData: FormData) {
   redirect("/admin?pwreset=dismissed");
 }
 
+function profileText(value: FormDataEntryValue | null | undefined, fallback = "", max?: number) {
+  let text = String(value ?? fallback).trim();
+  if (max !== undefined) text = text.slice(0, max);
+  return text;
+}
+
 export async function updateProfile(formData: FormData) {
   const me = await getMe();
   if (!me) redirect("/login");
@@ -167,7 +184,7 @@ export async function updateProfile(formData: FormData) {
   const raw = formData.get("photo");
   const file = raw instanceof File && raw.size > 0 ? raw : null;
   const clear = String(formData.get("clearPhoto") || "") === "1";
-  let photoKey = me.photoKey;
+  let photoKey = me.photoKey ?? "";
 
   if (file) {
     const saved = await saveAvatar(file);
@@ -179,24 +196,36 @@ export async function updateProfile(formData: FormData) {
     photoKey = "";
   }
 
-  await prisma.user.update({
-    where: { id: me.id },
-    data: {
-      firstName: String(formData.get("firstName") || me.firstName).trim(),
-      lastName: String(formData.get("lastName") || me.lastName).trim(),
-      pronouns: String(formData.get("pronouns") || "").trim(),
-      year: String(formData.get("year") || "").trim(),
-      major: resolveMajor(String(formData.get("major") || "")),
-      university: resolveUniversity(String(formData.get("university") || me.university)),
-      bio: String(formData.get("bio") || "")
-        .trim()
-        .slice(0, 400),
-      needHelp: String(formData.get("needHelp") || "").trim(),
-      canHelp: String(formData.get("canHelp") || "").trim(),
-      showEmail: formData.get("showEmail") === "1",
-      photoKey,
-    },
-  });
+  const universityRaw = profileText(formData.get("university"), me.university);
+  const university = resolveUniversity(universityRaw) || me.university;
+  const studyStyle = profileText(formData.get("studyStyle"));
+  const styleOk =
+    !studyStyle || MEETUP_STYLES.includes(studyStyle as (typeof MEETUP_STYLES)[number]);
+
+  try {
+    await prisma.user.update({
+      where: { id: me.id },
+      data: {
+        firstName: profileText(formData.get("firstName"), me.firstName),
+        lastName: profileText(formData.get("lastName"), me.lastName),
+        pronouns: profileText(formData.get("pronouns")),
+        year: profileText(formData.get("year")),
+        major: resolveMajor(profileText(formData.get("major"))),
+        university,
+        bio: profileText(formData.get("bio"), "", 400),
+        needHelp: profileText(formData.get("needHelp")),
+        canHelp: profileText(formData.get("canHelp")),
+        examCourse: resolveCourse(profileText(formData.get("examCourse"))),
+        examDate: parseDateField(profileText(formData.get("examDate"))),
+        examTopics: profileText(formData.get("examTopics"), "", 300),
+        studyStyle: styleOk ? studyStyle : "",
+        showEmail: formData.get("showEmail") === "1",
+        photoKey,
+      },
+    });
+  } catch {
+    redirect(`/profile/${me.id}?edit=1&error=save`);
+  }
 
   redirect(`/profile/${me.id}`);
 }
@@ -208,7 +237,7 @@ export async function createMeeting(
   const me = await getMe();
   if (!me) redirect("/login");
 
-  const subject = String(formData.get("subject") || "").trim();
+  const subject = resolveCourse(String(formData.get("subject") || ""));
   const topic = String(formData.get("topic") || "").trim();
   const timeRaw = String(formData.get("time") || "").trim();
   const meetDate = String(formData.get("meetDate") || "").trim();
@@ -223,7 +252,7 @@ export async function createMeeting(
   const topics = splitList(topic);
   const kind = groupKindById(groupKind);
 
-  if (!COURSES.includes(subject)) return { error: "Pick a subject from the dropdown." };
+  if (!subject) return { error: "Enter a subject (2–80 characters)." };
   if (topics.length === 0 || topics.some((t) => t.length < 2 || t.length > 60)) {
     return { error: "Add at least one topic (2–60 characters each)." };
   }
@@ -277,7 +306,7 @@ export async function updateMeeting(
   if (!existing) redirect("/groups");
   if (existing.hostId !== me.id) redirect(`/meetings/${meetingId}`);
 
-  const subject = String(formData.get("subject") || "").trim();
+  const subject = resolveCourse(String(formData.get("subject") || ""));
   const topic = String(formData.get("topic") || "").trim();
   const timeRaw = String(formData.get("time") || "").trim();
   const meetDate = String(formData.get("meetDate") || "").trim();
@@ -293,7 +322,7 @@ export async function updateMeeting(
   const kind = groupKindById(groupKind);
   const memberCount = existing.members.length;
 
-  if (!COURSES.includes(subject)) return { error: "Pick a subject from the dropdown." };
+  if (!subject) return { error: "Enter a subject (2–80 characters)." };
   if (topics.length === 0 || topics.some((t) => t.length < 2 || t.length > 60)) {
     return { error: "Add at least one topic (2–60 characters each)." };
   }

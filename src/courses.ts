@@ -1,231 +1,43 @@
-/** Subjects + common study topics for each one. */
-export const SUBJECT_TOPICS: Record<string, string[]> = {
-  "Calc 1": [
-    "Limits",
-    "Continuity",
-    "Derivatives",
-    "Product / Quotient Rule",
-    "Chain Rule",
-    "Related Rates",
-    "Optimization",
-    "Implicit Differentiation",
-    "Mean Value Theorem",
-    "Exam 1 review",
-    "Exam 2 review",
-    "Final exam review",
-  ],
-  "Calc 2": [
-    "Integration by parts",
-    "U-substitution",
-    "Trig sub",
-    "Partial fractions",
-    "Improper integrals",
-    "Sequences",
-    "Series",
-    "Taylor series",
-    "Polar coordinates",
-    "Parametric equations",
-    "Vectors and applications",
-    "System of equations",
-    "Exam 1 review",
-    "Exam 2 review",
-    "Final exam review",
-  ],
-  "Calc 3": [
-    "Vectors in 3D",
-    "Partial derivatives",
-    "Gradients",
-    "Multiple integrals",
-    "Line integrals",
-    "Green's Theorem",
-    "Stokes' Theorem",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Linear Algebra": [
-    "Matrices",
-    "Row reduction",
-    "Determinants",
-    "Eigenvalues / eigenvectors",
-    "Vector spaces",
-    "Linear transformations",
-    "Orthogonality",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Discrete Math": [
-    "Logic & proofs",
-    "Sets",
-    "Functions & relations",
-    "Combinatorics",
-    "Graph theory",
-    "Induction",
-    "Recurrence relations",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Differential Equations": [
-    "Separable ODEs",
-    "First-order linear",
-    "Second-order ODEs",
-    "Laplace transforms",
-    "Systems of ODEs",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Physics 1": [
-    "Kinematics",
-    "Newton's laws",
-    "Forces & free-body diagrams",
-    "Energy & work",
-    "Momentum",
-    "Rotation",
-    "Oscillations",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Physics 2": [
-    "Electric fields",
-    "Gauss's law",
-    "Circuits",
-    "Magnetism",
-    "Induction",
-    "Waves & optics",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Chemistry 1": [
-    "Stoichiometry",
-    "Atomic structure",
-    "Periodic trends",
-    "Bonding",
-    "Thermochemistry",
-    "Gases",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Chemistry 2": [
-    "Equilibrium",
-    "Acids & bases",
-    "Kinetics",
-    "Electrochemistry",
-    "Thermodynamics",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Biology 1": [
-    "Cell structure",
-    "Macromolecules",
-    "Metabolism",
-    "Genetics basics",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Intro to Programming": [
-    "Variables & types",
-    "Conditionals",
-    "Loops",
-    "Functions",
-    "Arrays / lists",
-    "File I/O",
-    "Debugging",
-    "Project help",
-    "Exam review",
-  ],
-  "Data Structures": [
-    "Arrays & lists",
-    "Stacks & queues",
-    "Linked lists",
-    "Trees",
-    "Heaps",
-    "Hash tables",
-    "Graphs",
-    "Sorting",
-    "Big-O analysis",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Algorithms": [
-    "Divide & conquer",
-    "Dynamic programming",
-    "Greedy algorithms",
-    "Graph algorithms",
-    "Complexity",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Computer Organization": [
-    "Binary & numbering",
-    "Assembly basics",
-    "CPU pipeline",
-    "Memory hierarchy",
-    "Caches",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Software Engineering": [
-    "Requirements",
-    "UML / design",
-    "Agile / Scrum",
-    "Testing",
-    "Git workflows",
-    "Design patterns",
-    "Project milestone help",
-    "Exam review",
-  ],
-  "Databases": [
-    "ER diagrams",
-    "SQL selects",
-    "Joins",
-    "Normalization",
-    "Transactions",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Statistics": [
-    "Descriptive stats",
-    "Probability",
-    "Distributions",
-    "Hypothesis testing",
-    "Confidence intervals",
-    "Regression",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Economics": [
-    "Supply & demand",
-    "Elasticity",
-    "Market structures",
-    "GDP & inflation",
-    "Exam review",
-    "Final exam review",
-  ],
-  "Psychology": [
-    "Research methods",
-    "Memory & learning",
-    "Development",
-    "Social psychology",
-    "Exam review",
-    "Final exam review",
-  ],
-  "English Comp": [
-    "Thesis statements",
-    "Essay structure",
-    "Citations / MLA / APA",
-    "Peer review",
-    "Rhetorical analysis",
-    "Research paper help",
-  ],
-  "Public Speaking": [
-    "Speech outline",
-    "Persuasive speech",
-    "Informative speech",
-    "Delivery practice",
-    "Visual aids",
-  ],
-};
+import { SUBJECT_TOPICS } from "@/courses.data";
+
+export { SUBJECT_TOPICS };
+
+/** Fallback topic suggestions when the subject is custom or not in the catalog. */
+export const DEFAULT_TOPICS = [
+  "Exam review",
+  "Final exam review",
+  "Homework help",
+  "Practice problems",
+  "Concept review",
+  "Project help",
+  "Lab prep",
+  "Discussion",
+  "Midterm review",
+  "Quiz prep",
+] as const;
 
 export const COURSES = Object.keys(SUBJECT_TOPICS);
+
+export function searchCourses(query: string, limit = 40) {
+  const q = query.trim().toLowerCase();
+  if (!q) return COURSES.slice(0, limit);
+  const out: string[] = [];
+  for (const name of COURSES) {
+    if (name.toLowerCase().includes(q)) {
+      out.push(name);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
+/** Accept catalog courses or a custom name (2–80 chars). */
+export function resolveCourse(raw: string) {
+  const cleaned = raw.trim().replace(/\s+/g, " ");
+  if (cleaned.length < 2 || cleaned.length > 80) return "";
+  const hit = COURSES.find((c) => c.toLowerCase() === cleaned.toLowerCase());
+  return hit || cleaned;
+}
 
 export const LOCATIONS = [
   "Student Center",
@@ -263,7 +75,12 @@ export const MEETUP_STYLES = [
 ] as const;
 
 export function topicsFor(subject: string) {
-  return SUBJECT_TOPICS[subject] ?? [];
+  const cleaned = subject.trim();
+  if (!cleaned) return [...DEFAULT_TOPICS];
+  if (SUBJECT_TOPICS[cleaned]) return SUBJECT_TOPICS[cleaned];
+  const hit = COURSES.find((c) => c.toLowerCase() === cleaned.toLowerCase());
+  if (hit) return SUBJECT_TOPICS[hit];
+  return [...DEFAULT_TOPICS];
 }
 
 export function groupKindById(id: string) {

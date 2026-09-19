@@ -22,6 +22,12 @@ model User {
   photoKey   String    @default("")
   needHelp   String    @default("")
   canHelp    String    @default("")
+  /// Primary course for upcoming exam prep (optional)
+  examCourse String    @default("")
+  examDate   String    @default("")
+  examTopics String    @default("")
+  /// Preferred meetup style for exam prep, e.g. Exam review
+  studyStyle String    @default("")
   isAdmin    Boolean   @default(false)
   showEmail  Boolean   @default(false)
   createdAt  DateTime  @default(now())

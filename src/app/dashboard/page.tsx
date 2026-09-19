@@ -53,6 +53,48 @@ export default async function DashboardPage({
     .map((row) => (row.fromId === me.id ? row.to : row.from));
   const incoming = friendRows.filter((row) => row.status === "pending" && row.toId === me.id);
 
+  const friendIds = friends.map((f) => f.id);
+  const interactionScore = new Map<string, number>();
+  for (const id of friendIds) interactionScore.set(id, 0);
+
+  if (friendIds.length) {
+    const dms = await prisma.directMessage.findMany({
+      where: {
+        OR: [
+          { fromId: me.id, toId: { in: friendIds } },
+          { fromId: { in: friendIds }, toId: me.id },
+        ],
+      },
+      select: { id: true, fromId: true, toId: true },
+    });
+    for (const dm of dms) {
+      const otherId = dm.fromId === me.id ? dm.toId : dm.fromId;
+      interactionScore.set(otherId, (interactionScore.get(otherId) || 0) + 1);
+    }
+
+    const dmIds = dms.map((d) => d.id);
+    if (dmIds.length) {
+      const reacts = await prisma.dmReaction.findMany({
+        where: { dmId: { in: dmIds } },
+        include: { dm: { select: { fromId: true, toId: true } } },
+      });
+      for (const r of reacts) {
+        const otherId = r.dm.fromId === me.id ? r.dm.toId : r.dm.fromId;
+        if (friendIds.includes(otherId)) {
+          interactionScore.set(otherId, (interactionScore.get(otherId) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  const topFriends = [...friends]
+    .sort((a, b) => {
+      const diff = (interactionScore.get(b.id) || 0) - (interactionScore.get(a.id) || 0);
+      if (diff !== 0) return diff;
+      return a.firstName.localeCompare(b.firstName);
+    })
+    .slice(0, 5);
+
   const { cal } = await searchParams;
   const calMatch = /^(\d{4})-(\d{2})$/.exec(cal || "");
   let year = now.getFullYear();
@@ -82,7 +124,7 @@ export default async function DashboardPage({
     }));
 
   return (
-    <div className="page">
+    <div className="page motion-page-enter">
       <header className="page-header">
         <h1 className="page-title">Hey {me.firstName}</h1>
         <p>Your groups and what&apos;s coming up.</p>
@@ -111,13 +153,17 @@ export default async function DashboardPage({
         <div className="dash-section-head">
           <h2>Buddies</h2>
           <Link href="/friends" className="dash-hint" style={{ textDecoration: "underline" }}>
-            {friends.length} connected · chats
+            {friends.length} connected · view all chats
           </Link>
         </div>
         {incoming.length > 0 ? (
           <div className="dash-meet-list" style={{ marginBottom: 14 }}>
-            {incoming.map((row) => (
-              <div key={row.id} className="dash-meet">
+            {incoming.map((row, i) => (
+              <div
+                key={row.id}
+                className="dash-meet motion-stagger-item"
+                style={{ ["--motion-delay" as string]: `${i * 45}ms` }}
+              >
                 <Link href={`/profile/${row.from.id}`} className="dash-friend-link">
                   <Avatar user={row.from} style={{ width: 36, height: 36, fontSize: 12 }} />
                   <div className="dash-meet-main">
@@ -152,17 +198,32 @@ export default async function DashboardPage({
             No buddies yet. Open someone&apos;s profile from a meetup and hit Add buddy.
           </div>
         ) : (
-          <div className="dash-friends">
-            {friends.map((f) => (
-              <Link key={f.id} href={`/friends/${f.id}`} className="dash-friend">
-                <Avatar user={f} />
-                <b>
-                  {f.firstName} {f.lastName}
-                </b>
-                <span>{f.university || f.major || "Study buddy"}</span>
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="dash-friends">
+              {topFriends.map((f, i) => (
+                <Link
+                  key={f.id}
+                  href={`/friends/${f.id}`}
+                  className="dash-friend motion-stagger-item"
+                  style={{ ["--motion-delay" as string]: `${i * 45}ms` }}
+                >
+                  <Avatar user={f} />
+                  <b>
+                    {f.firstName} {f.lastName}
+                  </b>
+                  <span>{f.university || f.major || "Study buddy"}</span>
+                </Link>
+              ))}
+            </div>
+            {friends.length > 5 ? (
+              <p className="dash-hint" style={{ marginTop: 12 }}>
+                Showing your top 5 by recent chats.{" "}
+                <Link href="/friends" style={{ textDecoration: "underline" }}>
+                  See all {friends.length} buddies
+                </Link>
+              </p>
+            ) : null}
+          </>
         )}
       </section>
 

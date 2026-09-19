@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Avatar, photoSrc } from "@/avatar";
-import { ClassBubbles, MajorPicker, UniversityPicker, YearPicker } from "@/ui";
+import { ClassBubbles, ExamPrepFields, MajorPicker, UniversityPicker, YearPicker } from "@/ui";
 import { acceptFriend, addFriend, changePassword, removeFriend, updateProfile } from "@/app/actions";
 import { formatAccountId } from "@/account-id";
 import { isUserAdmin } from "@/admin";
-import { getMe, initials, prisma, splitList } from "@/lib";
+import { formatMeetDate, getMe, initials, prisma, splitList } from "@/lib";
 import { PhotoField } from "./photo";
 
 export default async function ProfilePage({
@@ -30,6 +30,7 @@ export default async function ProfilePage({
   const editing = isMe && edit === "1";
   const need = splitList(user.needHelp);
   const help = splitList(user.canHelp);
+  const examTopics = splitList(user.examTopics);
   const friendship = isMe
     ? null
     : await prisma.friendship.findFirst({
@@ -46,11 +47,14 @@ export default async function ProfilePage({
 
   if (editing) {
     return (
-      <div className="page" style={{ maxWidth: 560 }}>
+      <div className="page motion-page-enter" style={{ maxWidth: 560 }}>
         <header className="page-header">
           <h1 className="page-title">Edit Profile</h1>
         </header>
-        <form action={updateProfile} className="box">
+        <form action={updateProfile} className="box" encType="multipart/form-data">
+          {error === "save" ? (
+            <p className="err">Could not save profile. Restart the dev server and run npx prisma generate, then try again.</p>
+          ) : null}
           {error === "type" ? <p className="err">Use a jpg, png, gif, or webp.</p> : null}
           {error === "size" ? <p className="err">Keep photos under 4 MB.</p> : null}
           {error === "pwfill" ? <p className="err">Fill out all password fields.</p> : null}
@@ -89,6 +93,13 @@ export default async function ProfilePage({
           </label>
           <ClassBubbles label="Classes Need help in" name="needHelp" initial={need} />
           <ClassBubbles label="Classes Could help in" name="canHelp" initial={help} />
+          <ExamPrepFields
+            defaultCourse={user.examCourse}
+            defaultDate={user.examDate}
+            defaultTopics={splitList(user.examTopics)}
+            defaultStyle={user.studyStyle}
+            allowPastExamDate
+          />
           <div className="profile-email-setting">
             <p style={{ margin: "0 0 8px", fontSize: 14 }}>
               Email: <b>{user.email}</b>
@@ -134,7 +145,7 @@ export default async function ProfilePage({
   }
 
   return (
-    <div className="page" style={{ maxWidth: 520, textAlign: "center" }}>
+    <div className="page motion-page-enter" style={{ maxWidth: 520, textAlign: "center" }}>
       <header className="page-header" style={{ textAlign: "left" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h1 className="page-title" style={{ marginBottom: 0 }}>
@@ -153,71 +164,86 @@ export default async function ProfilePage({
         {user.firstName} {user.lastName}{" "}
         <span className="text-muted" style={{ fontSize: 16, fontWeight: 400 }}>{user.pronouns}</span>
       </h2>
-      <div style={{ marginBottom: 16 }}>
+      <dl className="profile-meta">
         {isMe || adminView ? (
-          <p className="text-muted" style={{ margin: "0 0 8px", fontSize: 13 }}>
-            Account ID: <b style={{ color: "var(--ink)" }}>{formatAccountId(user.accountNo)}</b>
-          </p>
+          <div className="profile-meta-row">
+            <dt>Account ID</dt>
+            <dd>{formatAccountId(user.accountNo)}</dd>
+          </div>
         ) : null}
-        <p style={{ margin: "4px 0" }}>{user.university || "University not set"}</p>
-        {user.year ? <p style={{ margin: "4px 0" }}>{user.year}</p> : null}
-        {user.major ? <p style={{ margin: "4px 0" }}>{user.major}</p> : null}
+        <div className="profile-meta-row">
+          <dt>University</dt>
+          <dd>{user.university || "Not set"}</dd>
+        </div>
+        {user.year ? (
+          <div className="profile-meta-row">
+            <dt>Year</dt>
+            <dd>{user.year}</dd>
+          </div>
+        ) : null}
+        {user.major ? (
+          <div className="profile-meta-row">
+            <dt>Major</dt>
+            <dd>{user.major}</dd>
+          </div>
+        ) : null}
         {isMe || user.showEmail ? (
-          <p style={{ margin: "8px 0 0", fontSize: 14 }}>
-            {user.email}
-            {isMe && !user.showEmail ? (
-              <span className="text-muted" style={{ display: "block", fontSize: 12, marginTop: 2 }}>
-                Hidden from others
-              </span>
-            ) : null}
-          </p>
+          <div className="profile-meta-row">
+            <dt>Email</dt>
+            <dd>
+              {user.email}
+              {isMe && !user.showEmail ? (
+                <span className="profile-meta-note">Hidden from others</span>
+              ) : null}
+            </dd>
+          </div>
         ) : null}
-      </div>
+      </dl>
 
       {!isMe ? (
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
-          <Link className="btn" href={`/friends/${user.id}`}>
+        <div className="profile-actions">
+          <Link className="btn profile-action-btn" href={`/friends/${user.id}`}>
             Message
           </Link>
           {friends ? (
             <>
-              <span className="pill active">Buddies</span>
-              <form action={removeFriend}>
+              <span className="pill active profile-action-btn">Buddies</span>
+              <form action={removeFriend} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="pill">
+                <button type="submit" className="pill profile-action-btn">
                   Remove buddy
                 </button>
               </form>
             </>
           ) : theySent ? (
             <>
-              <form action={acceptFriend}>
+              <form action={acceptFriend} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="btn">
+                <button type="submit" className="btn profile-action-btn">
                   Accept request
                 </button>
               </form>
-              <form action={removeFriend}>
+              <form action={removeFriend} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="pill">
+                <button type="submit" className="pill profile-action-btn">
                   Decline
                 </button>
               </form>
             </>
           ) : iSent ? (
             <>
-              <span className="pill">Request sent</span>
-              <form action={removeFriend}>
+              <span className="pill profile-action-btn">Request sent</span>
+              <form action={removeFriend} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="pill">
+                <button type="submit" className="pill profile-action-btn">
                   Cancel
                 </button>
               </form>
             </>
           ) : (
-            <form action={addFriend}>
+            <form action={addFriend} className="profile-action-form">
               <input type="hidden" name="userId" value={user.id} />
-              <button type="submit" className="pill">
+              <button type="submit" className="btn profile-action-btn">
                 Add buddy
               </button>
             </form>
@@ -242,6 +268,40 @@ export default async function ProfilePage({
             {help.length ? help.map((c) => <span key={c} className="bubble bubble-help">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
+        {user.examCourse || user.examDate || examTopics.length || user.studyStyle ? (
+          <section>
+            <h3>Exam prep</h3>
+            {user.examCourse ? (
+              <p style={{ margin: "0 0 6px" }}>
+                <b>Course:</b> {user.examCourse}
+              </p>
+            ) : null}
+            {user.examDate ? (
+              <p style={{ margin: "0 0 6px" }}>
+                <b>Exam date:</b> {formatMeetDate(user.examDate)}
+              </p>
+            ) : null}
+            {user.studyStyle ? (
+              <p style={{ margin: "0 0 6px" }}>
+                <b>Study style:</b> {user.studyStyle}
+              </p>
+            ) : null}
+            {examTopics.length ? (
+              <>
+                <p style={{ margin: "0 0 6px" }}>
+                  <b>Focus topics:</b>
+                </p>
+                <div className="profile-bubbles">
+                  {examTopics.map((t) => (
+                    <span key={t} className="bubble">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </section>
+        ) : null}
       </div>
     </div>
   );
