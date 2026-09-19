@@ -9,19 +9,6 @@ const prisma = new PrismaClient();
 
 const SEED_UA = "StudyBuddyBoard/0.1 (personal dev seed; local only)";
 
-async function wikiThumb(title: string, size = 400) {
-  const api = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=${size}`;
-  const res = await fetch(api, { headers: { "User-Agent": SEED_UA } });
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
-    query?: { pages?: Record<string, { thumbnail?: { source: string } }> };
-  };
-  const pages = data.query?.pages;
-  if (!pages) return null;
-  const page = Object.values(pages)[0];
-  return page?.thumbnail?.source || null;
-}
-
 async function downloadAvatar(url: string) {
   try {
     const res = await fetch(url, {
@@ -57,16 +44,46 @@ async function photoKeyFor(url: string | undefined) {
   return key || "";
 }
 
-async function avatarForSeed(email: string, wikiTitle?: string) {
-  if (wikiTitle) {
-    await new Promise((r) => setTimeout(r, 450));
-    const thumb = await wikiThumb(wikiTitle);
-    if (thumb) {
-      const key = await photoKeyFor(thumb);
-      if (key) return key;
-    }
+async function randomUserPortrait(seed: string) {
+  try {
+    const res = await fetch(
+      `https://randomuser.me/api/?seed=${encodeURIComponent(seed)}&inc=picture`,
+      { headers: { "User-Agent": SEED_UA } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: { picture?: { large?: string } }[] };
+    return data.results?.[0]?.picture?.large || null;
+  } catch {
+    return null;
   }
-  return photoKeyFor(`https://i.pravatar.cc/400?u=${encodeURIComponent(email)}`);
+}
+
+async function wikiThumbsBatch(titles: string[]) {
+  const out = new Map<string, string>();
+  const unique = [...new Set(titles)];
+  for (let i = 0; i < unique.length; i += 20) {
+    const chunk = unique.slice(i, i + 20);
+    const api = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(chunk.join("|"))}&prop=pageimages&format=json&pithumbsize=400`;
+    const res = await fetch(api, { headers: { "User-Agent": SEED_UA } });
+    if (!res.ok) continue;
+    const data = (await res.json()) as {
+      query?: { pages?: Record<string, { title?: string; thumbnail?: { source: string } }> };
+    };
+    for (const page of Object.values(data.query?.pages || {})) {
+      const src = page.thumbnail?.source;
+      if (page.title && src && !src.toLowerCase().includes(".svg")) {
+        out.set(page.title, src);
+      }
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return out;
+}
+
+async function portraitPhotoKey(email: string) {
+  const url = await randomUserPortrait(email);
+  if (!url) return "";
+  return photoKeyFor(url);
 }
 
 function hash(pw: string) {
@@ -565,7 +582,7 @@ const MEME_WIKI: Record<string, string> = {
   "kendrick.lamar.meme@auburn.edu": "Kendrick Lamar",
   "timothee.chalamet.meme@auburn.edu": "Timothée Chalamet",
   "mr.beast.meme@auburn.edu": "MrBeast",
-  "duo.lingo@auburn.edu": "Duolingo",
+  "duo.lingo@auburn.edu": "Luis von Ahn",
   "gordon.ramsay.meme@auburn.edu": "Gordon Ramsay",
   "walter.white.meme@auburn.edu": "Bryan Cranston",
   "oppenheimer.meme@auburn.edu": "J. Robert Oppenheimer",
@@ -573,10 +590,10 @@ const MEME_WIKI: Record<string, string> = {
   "gabe.newell@auburn.edu": "Gabe Newell",
   "wednesday.addams@auburn.edu": "Jenna Ortega",
   "michael.scott@auburn.edu": "Steve Carell",
-  "chatgpt.meme@auburn.edu": "ChatGPT",
-  "barbie.meme@auburn.edu": "Barbie (2023 film)",
-  "shrek.meme@auburn.edu": "Shrek (character)",
-  "naruto.meme@auburn.edu": "Naruto Uzumaki",
+  "chatgpt.meme@auburn.edu": "Sam Altman",
+  "barbie.meme@auburn.edu": "Margot Robbie",
+  "shrek.meme@auburn.edu": "Mike Myers",
+  "naruto.meme@auburn.edu": "Maile Flanagan",
   "lana.del.rey@auburn.edu": "Lana Del Rey",
   "charli.xcx@auburn.edu": "Charli XCX",
   "marie.curie@auburn.edu": "Marie Curie",
@@ -585,15 +602,21 @@ const MEME_WIKI: Record<string, string> = {
   "sabrina.carpenter@auburn.edu": "Sabrina Carpenter",
 };
 
-const DEMO_AVATARS: Record<string, string> = {
-  "jsmith@auburn.edu": "https://i.pravatar.cc/400?u=jordan-taylor",
-  "alex@auburn.edu": "https://i.pravatar.cc/400?u=alex-nguyen",
-  "sam@auburn.edu": "https://i.pravatar.cc/400?u=sam-rivera",
-  "henry@auburn.edu": "https://i.pravatar.cc/400?u=henry-park",
-  "hailey@auburn.edu": "https://i.pravatar.cc/400?u=hailey-brooks",
-};
-
 async function main() {
+  const wikiThumbs = await wikiThumbsBatch(Object.values(MEME_WIKI));
+
+  async function memePhotoKey(email: string) {
+    const title = MEME_WIKI[email as keyof typeof MEME_WIKI];
+    if (title) {
+      const thumb = wikiThumbs.get(title);
+      if (thumb) {
+        const key = await photoKeyFor(thumb);
+        if (key) return key;
+      }
+    }
+    return portraitPhotoKey(email);
+  }
+
   await prisma.passwordResetRequest.deleteMany();
   await prisma.reactionNotice.deleteMany();
   await prisma.dmReaction.deleteMany();
@@ -618,7 +641,7 @@ async function main() {
       bio: "Sophomore CS. I like whiteboard sessions and late library nights — usually grinding calc or discrete.",
       needHelp: "Calc 2, Physics 1",
       canHelp: "Intro to Programming, Discrete Math",
-      photoKey: await photoKeyFor(DEMO_AVATARS["jsmith@auburn.edu"]),
+      photoKey: await portraitPhotoKey("jsmith@auburn.edu"),
     },
   });
 
@@ -635,7 +658,7 @@ async function main() {
       bio: "SE junior at Tech. I host exam reviews and I'm always down to walk through practice problems.",
       needHelp: "Data Structures",
       canHelp: "Calc 2, Linear Algebra",
-      photoKey: await photoKeyFor(DEMO_AVATARS["alex@auburn.edu"]),
+      photoKey: await portraitPhotoKey("alex@auburn.edu"),
     },
   });
 
@@ -652,7 +675,7 @@ async function main() {
       bio: "First year at Bama still figuring campus out. Looking for a regular calc buddy so I don't cram alone.",
       needHelp: "Calc 2",
       canHelp: "College Algebra",
-      photoKey: await photoKeyFor(DEMO_AVATARS["sam@auburn.edu"]),
+      photoKey: await portraitPhotoKey("sam@auburn.edu"),
     },
   });
 
@@ -671,7 +694,7 @@ async function main() {
       bio: "UGA junior. Always down for a late library session.",
       needHelp: "Physics 1",
       canHelp: "Intro to Programming",
-      photoKey: await photoKeyFor(DEMO_AVATARS["henry@auburn.edu"]),
+      photoKey: await portraitPhotoKey("henry@auburn.edu"),
     },
   });
   const hailey = await prisma.user.create({
@@ -687,7 +710,7 @@ async function main() {
       bio: "Clemson math major. Quizlet queen. Calc 2 forever.",
       needHelp: "Calc 2",
       canHelp: "Statistics",
-      photoKey: await photoKeyFor(DEMO_AVATARS["hailey@auburn.edu"]),
+      photoKey: await portraitPhotoKey("hailey@auburn.edu"),
     },
   });
 
@@ -704,6 +727,7 @@ async function main() {
       bio: "Dev. Usually in the library or on a whiteboard.",
       needHelp: "Calc 2",
       canHelp: "Intro to Programming",
+      photoKey: await portraitPhotoKey("ryanh@auburn.edu"),
     },
   });
   const aiden = await prisma.user.create({
@@ -719,6 +743,7 @@ async function main() {
       bio: "Dev. Down to grind practice problems.",
       needHelp: "Data Structures",
       canHelp: "Intro to Programming",
+      photoKey: await portraitPhotoKey("aidenb@auburn.edu"),
     },
   });
   const bryan = await prisma.user.create({
@@ -734,6 +759,7 @@ async function main() {
       bio: "Dev. Exam reviews and late night debugging.",
       needHelp: "Physics 1",
       canHelp: "Software Engineering",
+      photoKey: await portraitPhotoKey("bryanm@auburn.edu"),
     },
   });
   const daniel = await prisma.user.create({
@@ -749,6 +775,7 @@ async function main() {
       bio: "Dev. Looking for a regular study crew.",
       needHelp: "Discrete Math",
       canHelp: "Calc 1",
+      photoKey: await portraitPhotoKey("danielk@auburn.edu"),
     },
   });
 
@@ -756,7 +783,7 @@ async function main() {
   let avatarHits = 0;
   let avatarMiss = 0;
   for (const meme of MEME_ACCOUNTS) {
-    const photoKey = await avatarForSeed(meme.email, MEME_WIKI[meme.email]);
+    const photoKey = await memePhotoKey(meme.email);
     if (photoKey) avatarHits++;
     else avatarMiss++;
 

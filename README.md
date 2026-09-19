@@ -54,4 +54,5 @@ To refresh dev-team accounts on an existing DB without wiping messages:
 ```bash
 npm run db:restore-team
 npm run db:patch-demo
+npm run db:refresh-avatars   # re-download profile photos from the web
 ```
