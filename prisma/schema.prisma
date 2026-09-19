@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  pronouns  String   @default("")
+  year      String   @default("")
+  major     String   @default("")
+  needHelp  String   @default("")
+  canHelp   String   @default("")
+  createdAt DateTime @default(now())
+  members   Member[]
+  messages  Message[]
+  meetings  Meeting[] @relation("Host")
+}
+
+model Meeting {
+  id        String   @id @default(cuid())
+  subject   String
+  topic     String
+  time      String
+  meetDate  String   @default("")
+  location  String
+  notes     String   @default("")
+  maxSize   Int      @default(8)
+  hostId    String
+  createdAt DateTime @default(now())
+  host      User     @relation("Host", fields: [hostId], references: [id])
+  members   Member[]
+  messages  Message[]
+}
+
+model Member {
+  id        String  @id @default(cuid())
+  meetingId String
+  userId    String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
