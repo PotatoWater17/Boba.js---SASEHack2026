@@ -104,7 +104,28 @@ button {
 }
 
 .nav-brand {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-shrink: 0;
+  width: fit-content;
   color: var(--purple);
+  line-height: 1;
+  gap: 0;
+}
+
+.nav-brand b {
+  display: block;
+  line-height: 1;
+}
+
+.nav-brand .tagline {
+  align-self: flex-end;
+  margin: -4px 0 0;
+  padding: 1px 8px;
+  font-size: 11px;
+  position: relative;
+  z-index: 1;
 }
 
 .nav-links {
@@ -226,6 +247,43 @@ button.pill {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #8a6a00;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.brand-lockup .page-title {
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hero .page-title {
+  font-size: clamp(26px, 7vw, 36px);
+}
+
+.tagline {
+  display: inline-block;
+  margin: 6px 0 14px;
+  padding: 3px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.brand-lockup .tagline {
+  align-self: flex-end;
+  margin: -8px 0 14px;
+  padding: 2px 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .section {
@@ -399,6 +457,56 @@ button.pill {
   line-height: 1.4;
 }
 
+.meet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: var(--offwhite);
+  color: #444;
+}
+
+.badge.kind-partner {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.badge.kind-small {
+  background: #fff3cd;
+  border-color: var(--accent);
+  color: #8a6a00;
+}
+
+.badge.kind-big {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  color: var(--purple);
+}
+
+.badge.style {
+  background: var(--white);
+  border-color: #ccc;
+  color: #555;
+  font-weight: 600;
+}
+
+.badge.uni {
+  background: #eef0ff;
+  border-color: #cfd4ff;
+  color: var(--purple);
+  font-weight: 600;
+}
+
 .dash-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -433,6 +541,44 @@ button.pill {
   letter-spacing: 0.03em;
 }
 
+.dash-friends {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.dash-friend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--white);
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 14px 10px;
+  text-align: center;
+  color: inherit;
+}
+
+.dash-friend b {
+  font-size: 14px;
+  color: #222;
+}
+
+.dash-friend span:last-child {
+  font-size: 12px;
+  color: #666;
+}
+
+.dash-friend-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: inherit;
+  flex: 1;
+}
+
 .dash-section {
   margin-bottom: 28px;
 }
@@ -460,6 +606,18 @@ button.pill {
 .dash-hint {
   font-size: 13px;
   color: #666;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-nav .pill {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 700;
 }
 
 .dash-meet-list {
@@ -525,6 +683,18 @@ button.pill {
   align-items: center;
   justify-content: center;
   gap: 2px;
+}
+
+button.cal-day {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+}
+
+button.cal-day:hover,
+button.cal-day:focus-visible {
+  border-color: var(--purple);
 }
 
 .cal-dot {

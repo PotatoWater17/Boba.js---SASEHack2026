@@ -2,7 +2,19 @@ import { createHash } from "crypto";
 import { cookies } from "next/headers";
 import { PrismaClient } from "@prisma/client";
 
-export { COURSES, LOCATIONS, SUBJECT_TOPICS, topicsFor } from "@/courses";
+export {
+  COURSES,
+  GROUP_KINDS,
+  LOCATIONS,
+  MEETUP_STYLES,
+  SUBJECT_TOPICS,
+  groupKindById,
+  groupKindFromMaxSize,
+  groupKindLabel,
+  topicsFor,
+} from "@/courses";
+export type { GroupKindId } from "@/courses";
+export { UNIVERSITIES, resolveUniversity } from "@/universities";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -98,7 +110,8 @@ export function ymd(date: Date) {
 /** Higher score = better match to the student's profile preferences. */
 export function meetingMatchScore(
   subject: string,
-  prefs: { needHelp: string; canHelp: string; major: string },
+  prefs: { needHelp: string; canHelp: string; major: string; university?: string },
+  university?: string,
 ) {
   const need = splitList(prefs.needHelp).map((s) => s.toLowerCase());
   const help = splitList(prefs.canHelp).map((s) => s.toLowerCase());
@@ -107,6 +120,13 @@ export function meetingMatchScore(
   if (need.some((c) => c === sub || sub.includes(c) || c.includes(sub))) score += 100;
   if (help.some((c) => c === sub || sub.includes(c) || c.includes(sub))) score += 40;
   if (prefs.major && sub.includes(prefs.major.toLowerCase().slice(0, 4))) score += 10;
+  if (
+    prefs.university &&
+    university &&
+    prefs.university.toLowerCase() === university.toLowerCase()
+  ) {
+    score += 50;
+  }
   return score;
 }
 

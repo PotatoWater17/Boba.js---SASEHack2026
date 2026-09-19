@@ -242,6 +242,40 @@ export const LOCATIONS = [
   "Coffee shop near campus",
 ];
 
+/** Partner = 1:1 (2 people). Small = 3–7. Big = 8+. */
+export const GROUP_KINDS = [
+  { id: "partner", label: "Partner (1:1)", min: 2, max: 2, defaultSize: 2 },
+  { id: "small", label: "Small group (3–7)", min: 3, max: 7, defaultSize: 5 },
+  { id: "big", label: "Big group (8+)", min: 8, max: 20, defaultSize: 12 },
+] as const;
+
+export type GroupKindId = (typeof GROUP_KINDS)[number]["id"];
+
+export const MEETUP_STYLES = [
+  "Practice problems",
+  "Lecture / teach-back",
+  "Exam review",
+  "Homework help",
+  "Concept review",
+  "Lab prep",
+  "Discussion",
+  "Mixed",
+] as const;
+
 export function topicsFor(subject: string) {
   return SUBJECT_TOPICS[subject] ?? [];
+}
+
+export function groupKindById(id: string) {
+  return GROUP_KINDS.find((k) => k.id === id);
+}
+
+export function groupKindLabel(id: string) {
+  return groupKindById(id)?.label ?? "Small group (3–7)";
+}
+
+export function groupKindFromMaxSize(maxSize: number): GroupKindId {
+  if (maxSize <= 2) return "partner";
+  if (maxSize <= 7) return "small";
+  return "big";
 }

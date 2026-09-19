@@ -8,36 +8,45 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  pronouns  String   @default("")
-  year      String   @default("")
-  major     String   @default("")
-  needHelp  String   @default("")
-  canHelp   String   @default("")
-  createdAt DateTime @default(now())
-  members   Member[]
-  messages  Message[]
-  meetings  Meeting[] @relation("Host")
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
+  firstName  String
+  lastName   String
+  pronouns   String    @default("")
+  year       String    @default("")
+  major      String    @default("")
+  university String    @default("")
+  bio        String    @default("")
+  needHelp   String    @default("")
+  canHelp    String    @default("")
+  createdAt  DateTime  @default(now())
+  members    Member[]
+  messages   Message[]
+  meetings   Meeting[] @relation("Host")
+  friendsFrom Friendship[] @relation("FriendsFrom")
+  friendsTo   Friendship[] @relation("FriendsTo")
 }
 
 model Meeting {
-  id        String   @id @default(cuid())
-  subject   String
-  topic     String
-  time      String
-  meetDate  String   @default("")
-  location  String
-  notes     String   @default("")
-  maxSize   Int      @default(8)
-  hostId    String
-  createdAt DateTime @default(now())
-  host      User     @relation("Host", fields: [hostId], references: [id])
-  members   Member[]
-  messages  Message[]
+  id         String    @id @default(cuid())
+  subject    String
+  topic      String
+  time       String
+  meetDate   String    @default("")
+  location   String
+  university String    @default("")
+  notes      String    @default("")
+  maxSize    Int       @default(8)
+  /// partner | small | big
+  groupKind  String    @default("small")
+  /// e.g. Practice problems, Lecture / teach-back
+  style      String    @default("Practice problems")
+  hostId     String
+  createdAt  DateTime  @default(now())
+  host       User      @relation("Host", fields: [hostId], references: [id])
+  members    Member[]
+  messages   Message[]
 }
 
 model Member {
@@ -48,6 +57,19 @@ model Member {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, userId])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  fromId    String
+  toId      String
+  /// pending | accepted
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  from      User     @relation("FriendsFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        User     @relation("FriendsTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
 }
 
 model Message {

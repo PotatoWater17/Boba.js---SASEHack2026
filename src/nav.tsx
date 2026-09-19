@@ -8,7 +8,6 @@ const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/find", label: "Find buddies" },
   { href: "/groups", label: "My groups" },
-  { href: "/profile/me", label: "Profile" },
 ];
 
 export function NavLinks() {

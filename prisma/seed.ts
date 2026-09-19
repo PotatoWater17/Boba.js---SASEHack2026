@@ -45,6 +45,7 @@ const EXTRA = [
 ] as const;
 
 async function main() {
+  await prisma.friendship.deleteMany();
   await prisma.message.deleteMany();
   await prisma.member.deleteMany();
   await prisma.meeting.deleteMany();
@@ -59,6 +60,8 @@ async function main() {
       pronouns: "they/them",
       year: "Sophomore",
       major: "Computer Science",
+      university: "Auburn University",
+      bio: "Sophomore CS. I like whiteboard sessions and late library nights — usually grinding calc or discrete.",
       needHelp: "Calc 2, Physics 1",
       canHelp: "Intro to Programming, Discrete Math",
     },
@@ -73,6 +76,8 @@ async function main() {
       pronouns: "he/him",
       year: "Junior",
       major: "Software Engineering",
+      university: "Auburn University",
+      bio: "SE junior. I host exam reviews and I'm always down to walk through practice problems.",
       needHelp: "Data Structures",
       canHelp: "Calc 2, Linear Algebra",
     },
@@ -87,12 +92,21 @@ async function main() {
       pronouns: "she/her",
       year: "Freshman",
       major: "Computer Science",
+      university: "Auburn University",
+      bio: "First year still figuring campus out. Looking for a regular calc buddy so I don't cram alone.",
       needHelp: "Calc 2",
       canHelp: "College Algebra",
     },
   });
 
   const hosts = [jordan, alex, sam];
+
+  await prisma.friendship.create({
+    data: { fromId: jordan.id, toId: alex.id, status: "accepted" },
+  });
+  await prisma.friendship.create({
+    data: { fromId: sam.id, toId: jordan.id, status: "pending" },
+  });
 
   await prisma.meeting.create({
     data: {
@@ -101,8 +115,11 @@ async function main() {
       time: "6:00 PM",
       meetDate: dayOffset(0),
       location: "Student Center",
+      university: "Auburn University",
       notes: "Bring a calculator. We’ll work from the practice midterm PDF.",
       maxSize: 7,
+      groupKind: "small",
+      style: "Exam review",
       hostId: alex.id,
       members: {
         create: [{ userId: alex.id }, { userId: sam.id }, { userId: jordan.id }],
@@ -117,6 +134,17 @@ async function main() {
     },
   });
 
+  const styles = [
+    "Practice problems",
+    "Lecture / teach-back",
+    "Exam review",
+    "Homework help",
+    "Concept review",
+    "Lab prep",
+    "Discussion",
+    "Mixed",
+  ];
+
   for (let i = 0; i < EXTRA.length; i++) {
     const [subject, topic, time, location, offset] = EXTRA[i];
     const host = hosts[i % hosts.length];
@@ -125,6 +153,10 @@ async function main() {
         ? { create: [{ userId: host.id }, { userId: jordan.id }] }
         : { create: [{ userId: host.id }] };
 
+    const sizeRoll = i % 5;
+    const maxSize = sizeRoll === 0 ? 2 : sizeRoll === 1 ? 4 : sizeRoll === 2 ? 6 : sizeRoll === 3 ? 8 : 12;
+    const groupKind = maxSize <= 2 ? "partner" : maxSize <= 7 ? "small" : "big";
+
     await prisma.meeting.create({
       data: {
         subject,
@@ -132,7 +164,10 @@ async function main() {
         time,
         meetDate: dayOffset(offset),
         location,
-        maxSize: 6 + (i % 5),
+        university: "Auburn University",
+        maxSize,
+        groupKind,
+        style: styles[i % styles.length],
         hostId: host.id,
         members,
       },

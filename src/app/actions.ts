@@ -1,8 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { COURSES, groupKindById, MEETUP_STYLES } from "@/courses";
+import { resolveUniversity } from "@/universities";
 import { clearUser, formatTimeInput, getMe, hashPassword, isStrongPassword, isValidMeetDate, prisma, setUser, splitList } from "@/lib";
-import { COURSES } from "@/courses";
 
 export async function signup(formData: FormData) {
   const email = String(formData.get("email") || "")
@@ -12,8 +13,9 @@ export async function signup(formData: FormData) {
   const confirm = String(formData.get("confirm") || "");
   const firstName = String(formData.get("firstName") || "").trim();
   const lastName = String(formData.get("lastName") || "").trim();
+  const university = resolveUniversity(String(formData.get("university") || ""));
 
-  if (!email || !password || !firstName || !lastName) {
+  if (!email || !password || !firstName || !lastName || !university) {
     redirect("/login?error=fill");
   }
   if (password !== confirm) redirect("/login?error=match");
@@ -28,6 +30,7 @@ export async function signup(formData: FormData) {
       password: hashPassword(password),
       firstName,
       lastName,
+      university,
     },
   });
 
@@ -67,6 +70,10 @@ export async function updateProfile(formData: FormData) {
       pronouns: String(formData.get("pronouns") || "").trim(),
       year: String(formData.get("year") || "").trim(),
       major: String(formData.get("major") || "").trim(),
+      university: resolveUniversity(String(formData.get("university") || me.university)),
+      bio: String(formData.get("bio") || "")
+        .trim()
+        .slice(0, 400),
       needHelp: String(formData.get("needHelp") || "").trim(),
       canHelp: String(formData.get("canHelp") || "").trim(),
     },
@@ -87,11 +94,15 @@ export async function createMeeting(
   const timeRaw = String(formData.get("time") || "").trim();
   const meetDate = String(formData.get("meetDate") || "").trim();
   const location = String(formData.get("location") || "").trim();
+  const university = resolveUniversity(String(formData.get("university") || me.university));
   const notes = String(formData.get("notes") || "").trim().slice(0, 300);
-  const maxSize = Number(formData.get("maxSize") || 8);
+  const groupKind = String(formData.get("groupKind") || "small").trim();
+  const style = String(formData.get("style") || "").trim();
+  const maxSizeRaw = Number(formData.get("maxSize") || 0);
 
   const time = formatTimeInput(timeRaw);
   const topics = splitList(topic);
+  const kind = groupKindById(groupKind);
 
   if (!COURSES.includes(subject)) return { error: "Pick a subject from the dropdown." };
   if (topics.length === 0 || topics.some((t) => t.length < 2 || t.length > 60)) {
@@ -101,8 +112,15 @@ export async function createMeeting(
   if (!time) return { error: "Pick a valid meeting time from the time picker." };
   if (!location) return { error: "Enter a location." };
   if (location.length > 120) return { error: "Location is too long (max 120 characters)." };
-  if (!Number.isInteger(maxSize) || maxSize < 2 || maxSize > 20) {
-    return { error: "Group size must be a whole number from 2 to 20." };
+  if (!university) return { error: "Pick a university so classmates can find this group." };
+  if (!kind) return { error: "Pick a group size category." };
+  if (!(MEETUP_STYLES as readonly string[]).includes(style)) {
+    return { error: "Pick a meetup style from the list." };
+  }
+
+  const maxSize = kind.id === "partner" ? 2 : maxSizeRaw;
+  if (!Number.isInteger(maxSize) || maxSize < kind.min || maxSize > kind.max) {
+    return { error: `For ${kind.label}, size must be ${kind.min === kind.max ? kind.min : `${kind.min}–${kind.max}`}.` };
   }
 
   const meeting = await prisma.meeting.create({
@@ -112,8 +130,11 @@ export async function createMeeting(
       time,
       meetDate,
       location,
+      university,
       notes,
       maxSize,
+      groupKind: kind.id,
+      style,
       hostId: me.id,
       members: { create: [{ userId: me.id }] },
     },
@@ -163,4 +184,67 @@ export async function sendMessage(formData: FormData) {
 
   await prisma.message.create({ data: { meetingId, userId: me.id, text } });
   redirect(`/meetings/${meetingId}`);
+}
+
+async function friendshipBetween(a: string, b: string) {
+  return prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { fromId: a, toId: b },
+        { fromId: b, toId: a },
+      ],
+    },
+  });
+}
+
+export async function addFriend(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  if (!userId || userId === me.id) redirect("/dashboard");
+
+  const other = await prisma.user.findUnique({ where: { id: userId } });
+  if (!other) redirect("/dashboard");
+
+  const existing = await friendshipBetween(me.id, userId);
+  if (existing?.status === "accepted") redirect(`/profile/${userId}`);
+  if (existing?.fromId === me.id) redirect(`/profile/${userId}`);
+  if (existing && existing.fromId === userId && existing.status === "pending") {
+    await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
+    redirect(`/profile/${userId}`);
+  }
+
+  await prisma.friendship.create({ data: { fromId: me.id, toId: userId, status: "pending" } });
+  redirect(`/profile/${userId}`);
+}
+
+export async function acceptFriend(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = String(formData.get("next") || "") || `/profile/${userId}`;
+  const existing = await friendshipBetween(me.id, userId);
+  if (existing && existing.toId === me.id && existing.status === "pending") {
+    await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
+  }
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+}
+
+export async function removeFriend(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = String(formData.get("next") || "") || `/profile/${userId}`;
+  await prisma.friendship.deleteMany({
+    where: {
+      OR: [
+        { fromId: me.id, toId: userId },
+        { fromId: userId, toId: me.id },
+      ],
+    },
+  });
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
 }

@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "StudyBuddyBoard",
-  description: "Find study groups with classmates",
+  description: "Fuel the grind. Find study groups with classmates.",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +19,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="nav">
           <Link href="/" className="nav-brand">
             <b>StudyBuddyBoard</b>
+            <span className="tagline">Fuel the grind</span>
           </Link>
           {me ? (
             <>

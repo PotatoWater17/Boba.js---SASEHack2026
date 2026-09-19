@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { login, signup } from "@/app/actions";
 import { getMe } from "@/lib";
+import { UniversityPicker } from "@/ui";
 
 export default async function LoginPage({
   searchParams,
@@ -29,13 +30,18 @@ export default async function LoginPage({
         <h1 className="page-title">Login</h1>
       </header>
       <div className="box" style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-        <Image
-          src="/teddy-bear-face.jpg"
-          alt=""
-          width={140}
-          height={140}
-          style={{ borderRadius: 12, flexShrink: 0 }}
-        />
+        <div style={{ textAlign: "center" }}>
+          <Image
+            src="/teddy-bear-face.jpg"
+            alt=""
+            width={140}
+            height={140}
+            style={{ borderRadius: 12, display: "block" }}
+          />
+          <div className="tagline" style={{ margin: "8px 0 0" }}>
+            Fuel the grind
+          </div>
+        </div>
         <form action={login} style={{ flex: 1 }}>
           <label>
             School email
@@ -67,6 +73,7 @@ export default async function LoginPage({
             Last Name
             <input className="field" name="lastName" required />
           </label>
+          <UniversityPicker />
           <label>
             Enter your school email
             <input className="field" name="email" type="email" placeholder="ex. jsmith@school.edu" required />

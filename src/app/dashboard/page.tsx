@@ -1,9 +1,25 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { acceptFriend, removeFriend } from "@/app/actions";
+import { DashCalendar } from "./calendar";
 import { formatMeetDate, getMe, initials, prisma, ymd } from "@/lib";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function calHref(year: number, month: number) {
+  const d = new Date(year, month, 1);
+  const now = new Date();
+  if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+    return "/dashboard#cal";
+  }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `/dashboard?cal=${y}-${m}#cal`;
+}
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cal?: string }>;
+}) {
   const me = await getMe();
   if (!me) redirect("/login");
 
@@ -24,20 +40,45 @@ export default async function DashboardPage() {
   const weekEnd = ymd(weekEndDate);
   const thisWeek = upcoming.filter((m) => m.meetDate && m.meetDate <= weekEnd);
 
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const monthName = now.toLocaleString("en-US", { month: "long", year: "numeric" });
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const friendRows = await prisma.friendship.findMany({
+    where: {
+      OR: [{ fromId: me.id }, { toId: me.id }],
+    },
+    include: { from: true, to: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const friends = friendRows
+    .filter((row) => row.status === "accepted")
+    .map((row) => (row.fromId === me.id ? row.to : row.from));
+  const incoming = friendRows.filter((row) => row.status === "pending" && row.toId === me.id);
 
-  const byDate = new Map<string, number>();
-  for (const m of meetings) {
-    if (!m.meetDate) continue;
-    byDate.set(m.meetDate, (byDate.get(m.meetDate) || 0) + 1);
+  const { cal } = await searchParams;
+  const calMatch = /^(\d{4})-(\d{2})$/.exec(cal || "");
+  let year = now.getFullYear();
+  let month = now.getMonth();
+  if (calMatch) {
+    const y = Number(calMatch[1]);
+    const m = Number(calMatch[2]) - 1;
+    if (m >= 0 && m <= 11 && y >= 2020 && y <= now.getFullYear() + 3) {
+      year = y;
+      month = m;
+    }
   }
-
-  const blanks = Array.from({ length: firstDow });
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const viewing = new Date(year, month, 1);
+  const isThisMonth = year === now.getFullYear() && month === now.getMonth();
+  const monthName = viewing.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const calMeets = meetings
+    .filter((m) => m.meetDate)
+    .map((m) => ({
+      id: m.id,
+      subject: m.subject,
+      topic: m.topic || "",
+      meetDate: m.meetDate,
+      time: m.time,
+      location: m.location,
+      size: m.members.length,
+      maxSize: m.maxSize,
+    }));
 
   return (
     <div className="page">
@@ -67,6 +108,65 @@ export default async function DashboardPage() {
 
       <section className="dash-section">
         <div className="dash-section-head">
+          <h2>Friends</h2>
+          <span className="dash-hint">{friends.length} connected</span>
+        </div>
+        {incoming.length > 0 ? (
+          <div className="dash-meet-list" style={{ marginBottom: 14 }}>
+            {incoming.map((row) => (
+              <div key={row.id} className="dash-meet">
+                <Link href={`/profile/${row.from.id}`} className="dash-friend-link">
+                  <span className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
+                    {initials(row.from.firstName, row.from.lastName)}
+                  </span>
+                  <div className="dash-meet-main">
+                    <b>
+                      {row.from.firstName} {row.from.lastName}
+                    </b>
+                    <div className="dash-meet-meta">wants to be friends</div>
+                  </div>
+                </Link>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <form action={acceptFriend}>
+                    <input type="hidden" name="userId" value={row.from.id} />
+                    <input type="hidden" name="next" value="/dashboard" />
+                    <button type="submit" className="btn">
+                      Accept
+                    </button>
+                  </form>
+                  <form action={removeFriend}>
+                    <input type="hidden" name="userId" value={row.from.id} />
+                    <input type="hidden" name="next" value="/dashboard" />
+                    <button type="submit" className="pill">
+                      Decline
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {friends.length === 0 ? (
+          <div className="card">
+            No friends yet. Open someone&apos;s profile from a meetup and hit Add friend.
+          </div>
+        ) : (
+          <div className="dash-friends">
+            {friends.map((f) => (
+              <Link key={f.id} href={`/profile/${f.id}`} className="dash-friend">
+                <span className="avatar">{initials(f.firstName, f.lastName)}</span>
+                <b>
+                  {f.firstName} {f.lastName}
+                </b>
+                <span>{f.university || f.major || "Study buddy"}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="dash-section">
+        <div className="dash-section-head">
           <h2>Next up</h2>
         </div>
         {upcoming.length === 0 ? (
@@ -82,6 +182,7 @@ export default async function DashboardPage() {
                   </b>
                   <div className="dash-meet-meta">
                     {m.meetDate ? formatMeetDate(m.meetDate) : "Date TBD"} · {m.time} · {m.location}
+                    {m.university ? ` · ${m.university}` : ""}
                   </div>
                 </div>
                 <div className="dash-meet-side">
@@ -102,36 +203,24 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="dash-section">
+      <section className="dash-section" id="cal">
         <div className="dash-section-head">
           <h2>{monthName}</h2>
-          <span className="dash-hint">yellow = you have a meetup</span>
-        </div>
-        <div className="cal">
-          <div className="cal-grid">
-            {DAYS.map((d) => (
-              <div key={d} className="cal-dow">
-                {d}
-              </div>
-            ))}
-            {blanks.map((_, i) => (
-              <div key={`e${i}`} className="cal-day empty" />
-            ))}
-            {days.map((day) => {
-              const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const count = byDate.get(dateStr) || 0;
-              return (
-                <div
-                  key={day}
-                  className={`cal-day compact${count ? " has-meet" : ""}${dateStr === today ? " today" : ""}`}
-                >
-                  <div className="cal-day-num">{day}</div>
-                  {count > 0 ? <div className="cal-dot">{count}</div> : null}
-                </div>
-              );
-            })}
+          <div className="cal-nav">
+            <Link className="pill" href={calHref(year, month - 1)} aria-label="Previous month">
+              ←
+            </Link>
+            {!isThisMonth ? (
+              <Link className="pill" href="/dashboard#cal">
+                This month
+              </Link>
+            ) : null}
+            <Link className="pill" href={calHref(year, month + 1)} aria-label="Next month">
+              →
+            </Link>
           </div>
         </div>
+        <DashCalendar year={year} month={month} today={today} meetings={calMeets} />
       </section>
     </div>
   );

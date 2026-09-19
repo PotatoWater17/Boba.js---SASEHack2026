@@ -85,7 +85,10 @@ export default async function IntroPage() {
         />
         <div>
           <p className="eyebrow">Built for college students</p>
-          <h1 style={{ marginTop: 0 }}>StudyBuddyBoard</h1>
+          <div className="brand-lockup">
+            <h1 className="page-title">StudyBuddyBoard</h1>
+            <p className="tagline">Fuel the grind</p>
+          </div>
           <p style={{ fontSize: 18, maxWidth: 520 }}>
             Stop cramming alone before exams. StudyBuddyBoard helps you find students like you who
             are also looking to prep, plan out the study group, and stay connected!
