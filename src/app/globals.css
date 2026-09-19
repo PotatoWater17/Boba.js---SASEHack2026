@@ -35,6 +35,11 @@ button {
   padding: 20px;
 }
 
+.box a {
+  color: var(--purple);
+  text-decoration: underline;
+}
+
 .card {
   background: var(--white);
   border: 1px solid #eee;
@@ -85,6 +90,9 @@ button {
 }
 
 .nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -93,6 +101,10 @@ button {
   padding: 12px 16px;
   background: var(--white);
   border-bottom: 1px solid #eee;
+}
+
+.nav-brand {
+  color: var(--purple);
 }
 
 .nav-links {
@@ -107,6 +119,18 @@ button {
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 14px;
+}
+
+.pill.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+  font-weight: 700;
+}
+
+button.pill {
+  cursor: pointer;
+  font: inherit;
 }
 
 .avatar {
@@ -383,14 +407,12 @@ button {
 }
 
 .dash-stat {
-  position: relative;
   background: var(--white);
   border: 1px solid #eee;
   border-top: 3px solid var(--accent);
   border-radius: 12px;
   padding: 14px 12px;
   text-align: center;
-  cursor: help;
 }
 
 .dash-stat strong {
@@ -409,74 +431,6 @@ button {
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-}
-
-.dash-stat[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 220px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #2d2a32;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.35;
-  text-transform: none;
-  letter-spacing: 0;
-  text-align: left;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-  z-index: 5;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-}
-
-.dash-stat[data-tip]:hover::after,
-.dash-stat[data-tip]:focus-visible::after {
-  opacity: 1;
-}
-
-.dash-nav {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 28px;
-}
-
-.dash-nav-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: var(--white);
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 14px 14px;
-  color: inherit;
-}
-
-.dash-nav-card:hover {
-  border-color: var(--accent);
-  background: #fffdf5;
-}
-
-.dash-nav-card.accent {
-  background: #fff3cd;
-  border-color: var(--accent);
-}
-
-.dash-nav-card strong {
-  color: var(--purple);
-  font-size: 15px;
-}
-
-.dash-nav-card span {
-  font-size: 13px;
-  color: #666;
 }
 
 .dash-section {
@@ -523,10 +477,6 @@ button {
   border-radius: 12px;
   padding: 12px 14px;
   color: inherit;
-}
-
-.dash-meet:hover {
-  border-color: var(--accent);
 }
 
 .dash-meet-main b {
@@ -592,10 +542,6 @@ button {
 
 @media (max-width: 800px) {
   .dash-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .dash-nav {
     grid-template-columns: repeat(2, 1fr);
   }
 }

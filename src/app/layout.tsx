@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { logout } from "@/app/actions";
 import { getMe, initials } from "@/lib";
+import { NavLinks } from "@/nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,28 +17,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body>
         <header className="nav">
-          <Link href="/">
+          <Link href="/" className="nav-brand">
             <b>StudyBuddyBoard</b>
           </Link>
           {me ? (
             <>
-              <div className="nav-links">
-                <Link className="pill" href="/">
-                  About
-                </Link>
-                <Link className="pill" href="/dashboard">
-                  Dashboard
-                </Link>
-                <Link className="pill" href="/profile/me">
-                  Profile
-                </Link>
-                <Link className="pill" href="/find">
-                  Find buddies
-                </Link>
-                <Link className="pill" href="/groups">
-                  Groups I&apos;m in
-                </Link>
-              </div>
+              <NavLinks />
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <Link href={`/profile/${me.id}`} className="avatar" title="My profile">
                   {initials(me.firstName, me.lastName)}
