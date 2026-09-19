@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { joinMeeting } from "@/app/actions";
+import { Avatar } from "@/avatar";
 import {
   COURSES,
   formatMeetDate,
   getMe,
   GROUP_KINDS,
   groupKindLabel,
-  initials,
   meetingMatchScore,
   MEETUP_STYLES,
   PAGE_SIZE,
@@ -235,8 +235,8 @@ export default async function BrowseMeetupsPage({
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
                   {m.members.map((mem) => (
-                    <Link key={mem.id} href={`/profile/${mem.userId}`} className="avatar" title={mem.user.firstName}>
-                      {initials(mem.user.firstName, mem.user.lastName)}
+                    <Link key={mem.id} href={`/profile/${mem.userId}`} title={mem.user.firstName}>
+                      <Avatar user={mem.user} />
                     </Link>
                   ))}
                 </div>

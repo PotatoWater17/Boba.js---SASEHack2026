@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { createMeeting, leaveMeeting } from "@/app/actions";
+import { createMeeting, leaveMeeting, updateMeeting } from "@/app/actions";
 import { COURSES, GROUP_KINDS, LOCATIONS, MEETUP_STYLES, topicsFor, type GroupKindId } from "@/courses";
+import { MAJORS } from "@/majors";
 import { UNIVERSITIES } from "@/universities";
 
 export function ClassBubbles({
@@ -178,10 +179,95 @@ export function UniversityPicker({
   );
 }
 
+export function MajorPicker({
+  name = "major",
+  defaultValue = "",
+  required = false,
+  label = "Major",
+}: {
+  name?: string;
+  defaultValue?: string;
+  required?: boolean;
+  label?: string;
+}) {
+  const [query, setQuery] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = !q ? MAJORS.slice(0, 18) : MAJORS.filter((m) => m.toLowerCase().includes(q));
+    return list.slice(0, 24);
+  }, [query]);
+
+  function pick(value: string) {
+    setQuery(value);
+    setOpen(false);
+  }
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div style={{ marginBottom: 6 }}>{label}</div>
+      <div className="topic-picker">
+        <input
+          className="field"
+          name={name}
+          style={{ marginBottom: 0 }}
+          value={query}
+          placeholder="Type to search majors…"
+          autoComplete="off"
+          required={required}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (filtered[0]) pick(filtered[0]);
+            }
+          }}
+          onBlur={() => {
+            const hit = MAJORS.find((m) => m.toLowerCase() === query.trim().toLowerCase());
+            setQuery(hit || "");
+            setTimeout(() => setOpen(false), 150);
+          }}
+        />
+        {open ? (
+          <div className="topic-menu">
+            {filtered.length === 0 ? (
+              <div className="topic-empty">No match — try another search.</div>
+            ) : (
+              filtered.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className="topic-option"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(m)}
+                >
+                  {m}
+                </button>
+              ))
+            )}
+          </div>
+        ) : null}
+      </div>
+      <p style={{ fontSize: 13, color: "#666", margin: "6px 0 12px" }}>Pick a major from the list.</p>
+    </div>
+  );
+}
+
 /** Subject dropdown + multi-topic searchable picker. */
-export function SubjectTopicFields({ defaultSubject = "Calc 2" }: { defaultSubject?: string }) {
+export function SubjectTopicFields({
+  defaultSubject = "Calc 2",
+  initialTopics = [],
+}: {
+  defaultSubject?: string;
+  initialTopics?: string[];
+}) {
   const [subject, setSubject] = useState(defaultSubject);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(initialTopics);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -306,8 +392,8 @@ export function SubjectTopicFields({ defaultSubject = "Calc 2" }: { defaultSubje
   );
 }
 
-export function LocationField() {
-  const [value, setValue] = useState("");
+export function LocationField({ defaultValue = "" }: { defaultValue?: string }) {
+  const [value, setValue] = useState(defaultValue);
 
   return (
     <label>
@@ -331,28 +417,66 @@ export function LocationField() {
   );
 }
 
-export function CreateMeetupForm({ defaultUniversity = "" }: { defaultUniversity?: string }) {
-  const [state, action, pending] = useActionState(createMeeting, null);
-  const [meetDate, setMeetDate] = useState("");
-  const [time, setTime] = useState("18:00");
-  const [groupKind, setGroupKind] = useState<GroupKindId>("small");
-  const [maxSize, setMaxSize] = useState("5");
-  const [style, setStyle] = useState<string>(MEETUP_STYLES[0]);
-  const [notes, setNotes] = useState("");
+export function CreateMeetupForm({
+  defaultUniversity = "",
+  meeting,
+}: {
+  defaultUniversity?: string;
+  meeting?: {
+    id: string;
+    subject: string;
+    topic: string;
+    meetDate: string;
+    time: string;
+    location: string;
+    university: string;
+    notes: string;
+    groupKind: string;
+    style: string;
+    maxSize: number;
+    memberCount?: number;
+  };
+}) {
+  const editing = Boolean(meeting);
+  const [state, action, pending] = useActionState(editing ? updateMeeting : createMeeting, null);
+  const [meetDate, setMeetDate] = useState(meeting?.meetDate || "");
+  const [time, setTime] = useState(() => {
+    if (!meeting?.time) return "18:00";
+    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(meeting.time.trim());
+    if (!match) return "18:00";
+    let hour = Number(match[1]);
+    const minute = match[2];
+    const suffix = match[3].toUpperCase();
+    if (suffix === "PM" && hour < 12) hour += 12;
+    if (suffix === "AM" && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, "0")}:${minute}`;
+  });
+  const [groupKind, setGroupKind] = useState<GroupKindId>(
+    (meeting?.groupKind as GroupKindId) || "small",
+  );
+  const [maxSize, setMaxSize] = useState(String(meeting?.maxSize || "5"));
+  const [style, setStyle] = useState<string>(meeting?.style || MEETUP_STYLES[0]);
+  const [notes, setNotes] = useState(meeting?.notes || "");
 
   const kind = GROUP_KINDS.find((k) => k.id === groupKind) ?? GROUP_KINDS[1];
+  const minSize = Math.max(kind.min, meeting?.memberCount || 1);
 
   function onKindChange(next: GroupKindId) {
     setGroupKind(next);
     const k = GROUP_KINDS.find((x) => x.id === next);
-    if (k) setMaxSize(String(k.defaultSize));
+    if (k) setMaxSize(String(Math.max(k.defaultSize, meeting?.memberCount || 1)));
   }
+
+  const topics = meeting?.topic
+    ? meeting.topic.split(",").map((t) => t.trim()).filter(Boolean)
+    : [];
 
   return (
     <form action={action} className="box">
+      {editing ? <input type="hidden" name="meetingId" value={meeting!.id} /> : null}
       {state?.error ? <p className="err">{state.error}</p> : null}
-      <UniversityPicker defaultValue={defaultUniversity} />
-      <SubjectTopicFields defaultSubject="Calc 2" />
+      <UniversityPicker defaultValue={meeting?.university || defaultUniversity} />
+      <SubjectTopicFields defaultSubject={meeting?.subject || "Calc 2"} initialTopics={topics} />
       <label>
         Date
         <input
@@ -375,7 +499,7 @@ export function CreateMeetupForm({ defaultUniversity = "" }: { defaultUniversity
           onChange={(e) => setTime(e.target.value)}
         />
       </label>
-      <LocationField />
+      <LocationField defaultValue={meeting?.location || ""} />
       <label>
         Group size category
         <select
@@ -396,12 +520,12 @@ export function CreateMeetupForm({ defaultUniversity = "" }: { defaultUniversity
         <input type="hidden" name="maxSize" value="2" />
       ) : (
         <label>
-          Max people ({kind.min}–{kind.max})
+          Max people ({minSize}–{kind.max})
           <input
             className="field"
             name="maxSize"
             type="number"
-            min={kind.min}
+            min={minSize}
             max={kind.max}
             step={1}
             required
@@ -439,7 +563,7 @@ export function CreateMeetupForm({ defaultUniversity = "" }: { defaultUniversity
         />
       </label>
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? "Posting…" : "Post meetup"}
+        {pending ? (editing ? "Saving…" : "Posting…") : editing ? "Save changes" : "Post meetup"}
       </button>
     </form>
   );

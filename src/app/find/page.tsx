@@ -8,7 +8,7 @@ export default async function FindPage() {
 
   return (
     <div className="page">
-      <header className="page-header">
+      <header className="page-header" style={{ textAlign: "center" }}>
         <h1 className="page-title">Find study buddies</h1>
         <p>
           Groups are sorted by your profile preferences first (classes you need help in / can help with),
@@ -20,14 +20,17 @@ export default async function FindPage() {
       </header>
 
       <div className="find-hub">
+        <Link className="btn-accent find-hub-btn" href="/find/buddies">
+          <b>Find your buddies</b>
+          <span>Enter your classes and we&apos;ll match you with people.</span>
+        </Link>
         <Link className="btn find-hub-btn" href="/find/browse">
-          Browse meetups
+          <b>Browse meetups</b>
+          <span>See study groups already posted on campus.</span>
         </Link>
         <Link className="btn find-hub-btn" href="/find/create">
-          Create a meetup
-        </Link>
-        <Link className="btn-accent find-hub-btn" href="/find/buddies">
-          Find your buddies
+          <b>Create a meetup</b>
+          <span>Post a time, place, and topic for classmates to join.</span>
         </Link>
       </div>
     </div>

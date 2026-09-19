@@ -82,7 +82,7 @@ export function DashCalendar({
               <button
                 key={day}
                 type="button"
-                className={`cal-day compact${count ? " has-meet" : ""}${dateStr === today ? " today" : ""}`}
+                className={`cal-day${count ? " has-meet" : ""}${dateStr === today ? " today" : ""}`}
                 onClick={() => setOpen(dateStr)}
                 aria-label={
                   count

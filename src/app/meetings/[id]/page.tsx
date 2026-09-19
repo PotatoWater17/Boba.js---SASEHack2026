@@ -1,25 +1,29 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { joinMeeting, sendMessage } from "@/app/actions";
-import { LeaveGroupButton } from "@/ui";
-import { formatMeetDate, getMe, groupKindLabel, initials, prisma, splitList } from "@/lib";
+import { CreateMeetupForm, LeaveGroupButton } from "@/ui";
+import { Avatar } from "@/avatar";
+import { formatMeetDate, getMe, groupKindLabel, prisma, splitList } from "@/lib";
+import { GroupSeenOnOpen } from "./seen";
+import { InviteBuddies } from "./invite";
 
 export default async function MeetingPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; edit?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, edit } = await searchParams;
 
   const meeting = await prisma.meeting.findUnique({
     where: { id },
     include: {
+      host: true,
       members: { include: { user: true } },
       messages: { include: { user: true }, orderBy: { createdAt: "asc" } },
     },
@@ -27,17 +31,97 @@ export default async function MeetingPage({
   if (!meeting) notFound();
 
   const joined = meeting.members.some((m) => m.userId === me.id);
+  const isOwner = meeting.hostId === me.id;
   const topics = splitList(meeting.topic);
+
+  const memberIds = new Set(meeting.members.map((m) => m.userId));
+  const invites = joined
+    ? await prisma.meetupInvite.findMany({ where: { meetingId: meeting.id } })
+    : [];
+  const pendingInviteIds = invites.filter((i) => i.status === "pending").map((i) => i.toId);
+
+  let inviteBuddies: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    photoKey: string;
+    year: string;
+    major: string;
+  }[] = [];
+  if (joined) {
+    const bonds = await prisma.friendship.findMany({
+      where: {
+        status: "accepted",
+        OR: [{ fromId: me.id }, { toId: me.id }],
+      },
+      include: { from: true, to: true },
+    });
+    inviteBuddies = bonds
+      .map((b) => (b.fromId === me.id ? b.to : b.from))
+      .filter((u) => !memberIds.has(u.id))
+      .filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i);
+  }
+
+  if (isOwner && edit === "1") {
+    return (
+      <div className="page" style={{ maxWidth: 640 }}>
+        <header className="page-header">
+          <Link href={`/meetings/${meeting.id}`} className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
+            ← Back
+          </Link>
+          <h1 className="page-title">Edit meetup</h1>
+          <p>Update the details for your study session.</p>
+        </header>
+        <CreateMeetupForm
+          defaultUniversity={meeting.university || me.university}
+          meeting={{
+            id: meeting.id,
+            subject: meeting.subject,
+            topic: meeting.topic,
+            meetDate: meeting.meetDate,
+            time: meeting.time,
+            location: meeting.location,
+            university: meeting.university,
+            notes: meeting.notes,
+            groupKind: meeting.groupKind,
+            style: meeting.style,
+            maxSize: meeting.maxSize,
+            memberCount: meeting.members.length,
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="page">
+      {joined ? <GroupSeenOnOpen meetingId={meeting.id} /> : null}
       {error === "full" ? <p className="err">This group is full.</p> : null}
       {error === "join" ? <p className="err">Join the group before chatting.</p> : null}
 
-      <header className="page-header">
-        <h1 className="page-title">Meet up info</h1>
+      <header className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <h1 className="page-title" style={{ marginBottom: 0 }}>
+          Meet up info
+        </h1>
+        {isOwner ? (
+          <Link href={`/meetings/${meeting.id}?edit=1`} className="btn" title="Edit meetup">
+            Edit details
+          </Link>
+        ) : null}
       </header>
       <div className="card">
+        <div className="meet-owner">
+          <Link href={`/profile/${meeting.host.id}`} className="meet-owner-link">
+            <Avatar user={meeting.host} style={{ width: 36, height: 36, fontSize: 12 }} />
+            <span>
+              <span className="meet-owner-label">Meetup owner</span>
+              <b>
+                {meeting.host.firstName} {meeting.host.lastName}
+                {isOwner ? " (you)" : ""}
+              </b>
+            </span>
+          </Link>
+        </div>
         <p>
           <b>Subject:</b> {meeting.subject}
         </p>
@@ -76,12 +160,16 @@ export default async function MeetingPage({
           <p style={{ marginTop: 14 }}>
             <b>Notes / additional info:</b>
             <br />
-            <span style={{ color: "#444" }}>{meeting.notes}</span>
+            <span style={{ color: "var(--ink)" }}>{meeting.notes}</span>
           </p>
         ) : null}
         <div style={{ marginTop: 14 }}>
           {joined ? (
-            <LeaveGroupButton meetingId={meeting.id} />
+            isOwner ? (
+              <span className="pill active">You&apos;re the owner</span>
+            ) : (
+              <LeaveGroupButton meetingId={meeting.id} />
+            )
           ) : (
             <form action={joinMeeting}>
               <input type="hidden" name="meetingId" value={meeting.id} />
@@ -93,15 +181,24 @@ export default async function MeetingPage({
         </div>
       </div>
 
+      {joined ? (
+        <InviteBuddies
+          meetingId={meeting.id}
+          buddies={inviteBuddies}
+          pendingIds={pendingInviteIds}
+        />
+      ) : null}
+
       <h2>People</h2>
       <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 12 }}>
         {meeting.members.map((mem) => (
           <Link key={mem.id} href={`/profile/${mem.userId}`} style={{ textAlign: "center" }}>
-            <span className="avatar" style={{ margin: "0 auto" }}>
-              {initials(mem.user.firstName, mem.user.lastName)}
-            </span>
+            <Avatar user={mem.user} style={{ margin: "0 auto" }} />
             <div style={{ marginTop: 6, fontSize: 14 }}>
               {mem.user.firstName} {mem.user.lastName[0]}.
+              {mem.userId === meeting.hostId ? (
+                <div style={{ fontSize: 11, color: "var(--purple)", fontWeight: 700 }}>Owner</div>
+              ) : null}
             </div>
           </Link>
         ))}
@@ -115,8 +212,8 @@ export default async function MeetingPage({
           ) : (
             meeting.messages.map((msg) => (
               <div key={msg.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <Link href={`/profile/${msg.userId}`} className="avatar" style={{ width: 28, height: 28, fontSize: 10 }}>
-                  {initials(msg.user.firstName, msg.user.lastName)}
+                <Link href={`/profile/${msg.userId}`}>
+                  <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
                 </Link>
                 <div>
                   <b style={{ fontSize: 13 }}>

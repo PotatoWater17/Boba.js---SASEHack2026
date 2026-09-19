@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, addFriend } from "@/app/actions";
 import { MatchNotify } from "./notify";
-import { ClassBubbles, UniversityPicker } from "@/ui";
-import { buddyMatch, getMe, initials, prisma, splitList } from "@/lib";
+import { ClassBubbles, MajorPicker, UniversityPicker } from "@/ui";
+import { Avatar } from "@/avatar";
+import { buddyMatch, getMe, prisma, splitList } from "@/lib";
 
 export default async function FindBuddiesPage({
   searchParams,
@@ -21,6 +22,13 @@ export default async function FindBuddiesPage({
     university: submitted ? String(q.university || "") : me.university,
     major: submitted ? String(q.major || "") : me.major,
   };
+
+  const stayParams = new URLSearchParams();
+  stayParams.set("needHelp", prefs.needHelp);
+  stayParams.set("canHelp", prefs.canHelp);
+  stayParams.set("university", prefs.university);
+  stayParams.set("major", prefs.major);
+  const stay = `/find/buddies?${stayParams.toString()}`;
 
   const people = submitted
     ? await prisma.user.findMany({
@@ -72,10 +80,7 @@ export default async function FindBuddiesPage({
         <ClassBubbles label="Classes I need help in" name="needHelp" initial={splitList(prefs.needHelp)} />
         <ClassBubbles label="Classes I can help with" name="canHelp" initial={splitList(prefs.canHelp)} />
         <UniversityPicker defaultValue={prefs.university} required={false} />
-        <label>
-          Major
-          <input className="field" name="major" defaultValue={prefs.major} placeholder="Computer Science" />
-        </label>
+        <MajorPicker defaultValue={prefs.major} required={false} />
         <button className="btn" type="submit">
           Find matches
         </button>
@@ -91,44 +96,48 @@ export default async function FindBuddiesPage({
           <section>
             <h2 className="section-title">Matches</h2>
             <div className="found-list">
-              {ranked.slice(0, 12).map(({ user, reasons, bond }) => (
-                <div key={user.id} className="card found-mini" style={{ justifyContent: "space-between" }}>
-                  <Link href={`/profile/${user.id}`} style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                    <span className="avatar">{initials(user.firstName, user.lastName)}</span>
-                    <span>
-                      <b>
-                        {user.firstName} {user.lastName}
-                      </b>
-                      <span className="found-mini-why">
-                        {reasons.slice(0, 2).join(" · ") || [user.year, user.major].filter(Boolean).join(" · ")}
+              {ranked.slice(0, 12).map(({ user, reasons, bond }) => {
+                const bits = [user.year, user.major, user.university].filter(Boolean);
+                return (
+                  <div key={user.id} className="card found-mini" style={{ justifyContent: "space-between" }}>
+                    <Link href={`/profile/${user.id}`} className="found-mini-main">
+                      <Avatar user={user} />
+                      <span className="found-mini-text">
+                        <b>
+                          {user.firstName} {user.lastName}
+                        </b>
+                        {bits.length ? <span className="found-mini-meta">{bits.join(" · ")}</span> : null}
+                        {reasons.length ? (
+                          <span className="found-mini-why">{reasons.slice(0, 3).join(" · ")}</span>
+                        ) : null}
                       </span>
-                    </span>
-                  </Link>
-                  {bond?.status === "accepted" ? (
-                    <Link className="pill active" href={`/friends/${user.id}`}>
-                      Message
                     </Link>
-                  ) : bond?.status === "pending" && bond.toId === me.id ? (
-                    <form action={acceptFriend}>
-                      <input type="hidden" name="userId" value={user.id} />
-                      <input type="hidden" name="next" value="/find/buddies" />
-                      <button className="btn" type="submit">
-                        Accept
-                      </button>
-                    </form>
-                  ) : bond?.status === "pending" ? (
-                    <span className="pill">Sent</span>
-                  ) : (
-                    <form action={addFriend}>
-                      <input type="hidden" name="userId" value={user.id} />
-                      <input type="hidden" name="next" value="/find/buddies" />
-                      <button className="btn" type="submit">
-                        Add friend
-                      </button>
-                    </form>
-                  )}
-                </div>
-              ))}
+                    {bond?.status === "accepted" ? (
+                      <Link className="pill active" href={`/friends/${user.id}`}>
+                        Message
+                      </Link>
+                    ) : bond?.status === "pending" && bond.toId === me.id ? (
+                      <form action={acceptFriend}>
+                        <input type="hidden" name="userId" value={user.id} />
+                        <input type="hidden" name="next" value={stay} />
+                        <button className="btn" type="submit">
+                          Accept
+                        </button>
+                      </form>
+                    ) : bond?.status === "pending" ? (
+                      <span className="pill">Sent</span>
+                    ) : (
+                      <form action={addFriend}>
+                        <input type="hidden" name="userId" value={user.id} />
+                        <input type="hidden" name="next" value={stay} />
+                        <button className="btn" type="submit">
+                          Add buddy
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )

@@ -18,6 +18,7 @@ model User {
   major      String    @default("")
   university String    @default("")
   bio        String    @default("")
+  photoKey   String    @default("")
   needHelp   String    @default("")
   canHelp    String    @default("")
   createdAt  DateTime  @default(now())
@@ -28,6 +29,8 @@ model User {
   friendsTo   Friendship[] @relation("FriendsTo")
   dmsFrom     DirectMessage[] @relation("DmFrom")
   dmsTo       DirectMessage[] @relation("DmTo")
+  invitesFrom MeetupInvite[] @relation("InviteFrom")
+  invitesTo   MeetupInvite[] @relation("InviteTo")
 }
 
 model Meeting {
@@ -49,14 +52,16 @@ model Meeting {
   host       User      @relation("Host", fields: [hostId], references: [id])
   members    Member[]
   messages   Message[]
+  invites    MeetupInvite[]
 }
 
 model Member {
-  id        String  @id @default(cuid())
-  meetingId String
-  userId    String
-  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  meetingId  String
+  userId     String
+  lastReadAt DateTime  @default(now())
+  meeting    Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, userId])
 }
@@ -72,6 +77,21 @@ model Friendship {
   to        User     @relation("FriendsTo", fields: [toId], references: [id], onDelete: Cascade)
 
   @@unique([fromId, toId])
+}
+
+model MeetupInvite {
+  id        String   @id @default(cuid())
+  meetingId String
+  fromId    String
+  toId      String
+  /// pending | accepted | declined
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  from      User     @relation("InviteFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        User     @relation("InviteTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, toId])
 }
 
 model Message {
@@ -92,6 +112,8 @@ model DirectMessage {
   fileName  String   @default("")
   fileKey   String   @default("")
   fileMime  String   @default("")
+  inviteId  String   @default("")
+  seen      Boolean  @default(true)
   createdAt DateTime @default(now())
   from      User     @relation("DmFrom", fields: [fromId], references: [id], onDelete: Cascade)
   to        User     @relation("DmTo", fields: [toId], references: [id], onDelete: Cascade)

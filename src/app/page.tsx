@@ -54,7 +54,7 @@ function ChatIcon() {
 const reasons = [
   {
     icon: <BookIcon />,
-    title: "Prep for exams",
+    title: "Prepare for exams",
     body: "Find classmates taking the same midterm or final and review topics together before test day.",
   },
   {
@@ -86,11 +86,11 @@ export default async function IntroPage() {
         <div>
           <p className="eyebrow">Built for college students</p>
           <div className="brand-lockup">
-            <h1 className="page-title">StudyBuddyBoard</h1>
+            <h1 className="page-title brand-name">StudyBuddyBoard</h1>
             <p className="tagline">Fuel The Grind</p>
           </div>
           <p style={{ fontSize: 18, maxWidth: 520, marginTop: 24 }}>
-            Stop cramming alone before exams. StudyBuddyBoard helps you find students like you who
+            Stop cramming alone before exams. <span className="brand-name">StudyBuddyBoard</span> helps you find students like you who
             are also looking to prepare, plan out the study group, and stay connected!
           </p>
           <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -113,14 +113,16 @@ export default async function IntroPage() {
       <section className="section">
         <h2 className="section-title">About Us</h2>
         <p className="lead">
-          We built StudyBuddyBoard so you don&apos;t have to cram by yourself. Post a meetup, jump into
+          We built <span className="brand-name">StudyBuddyBoard</span> so you don&apos;t have to cram by yourself. Post a meetup, jump into
           one for your class, see who&apos;s going, and keep the group chat in one place — no more
           hunting through random group chats and flyers.
         </p>
       </section>
 
       <section className="section">
-        <h2 className="section-title">Why StudyBuddyBoard?</h2>
+        <h2 className="section-title">
+          Why <span className="brand-name">StudyBuddyBoard</span>?
+        </h2>
         <ul className="why-list">
           <li>
             <b>Your class, your people.</b> Filter by the course you&apos;re actually taking so you

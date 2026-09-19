@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, removeFriend } from "@/app/actions";
+import { Avatar } from "@/avatar";
 import { DashCalendar } from "./calendar";
-import { formatMeetDate, getMe, initials, prisma, ymd } from "@/lib";
+import { formatMeetDate, getMe, prisma, ymd } from "@/lib";
 
 function calHref(year: number, month: number) {
   const d = new Date(year, month, 1);
@@ -108,7 +109,7 @@ export default async function DashboardPage({
 
       <section className="dash-section">
         <div className="dash-section-head">
-          <h2>Friends</h2>
+          <h2>Buddies</h2>
           <Link href="/friends" className="dash-hint" style={{ textDecoration: "underline" }}>
             {friends.length} connected · chats
           </Link>
@@ -118,14 +119,12 @@ export default async function DashboardPage({
             {incoming.map((row) => (
               <div key={row.id} className="dash-meet">
                 <Link href={`/profile/${row.from.id}`} className="dash-friend-link">
-                  <span className="avatar" style={{ width: 36, height: 36, fontSize: 12 }}>
-                    {initials(row.from.firstName, row.from.lastName)}
-                  </span>
+                  <Avatar user={row.from} style={{ width: 36, height: 36, fontSize: 12 }} />
                   <div className="dash-meet-main">
                     <b>
                       {row.from.firstName} {row.from.lastName}
                     </b>
-                    <div className="dash-meet-meta">wants to be friends</div>
+                    <div className="dash-meet-meta">wants to be buddies</div>
                   </div>
                 </Link>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -150,13 +149,13 @@ export default async function DashboardPage({
         ) : null}
         {friends.length === 0 ? (
           <div className="card">
-            No friends yet. Open someone&apos;s profile from a meetup and hit Add friend.
+            No buddies yet. Open someone&apos;s profile from a meetup and hit Add buddy.
           </div>
         ) : (
           <div className="dash-friends">
             {friends.map((f) => (
               <Link key={f.id} href={`/friends/${f.id}`} className="dash-friend">
-                <span className="avatar">{initials(f.firstName, f.lastName)}</span>
+                <Avatar user={f} />
                 <b>
                   {f.firstName} {f.lastName}
                 </b>
@@ -193,9 +192,7 @@ export default async function DashboardPage({
                   </span>
                   <div className="dash-meet-avs">
                     {m.members.slice(0, 3).map((mem) => (
-                      <span key={mem.id} className="avatar" style={{ width: 28, height: 28, fontSize: 10 }}>
-                        {initials(mem.user.firstName, mem.user.lastName)}
-                      </span>
+                      <Avatar key={mem.id} user={mem.user} style={{ width: 28, height: 28, fontSize: 10 }} />
                     ))}
                   </div>
                 </div>

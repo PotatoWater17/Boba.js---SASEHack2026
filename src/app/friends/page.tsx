@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, removeFriend } from "@/app/actions";
-import { getMe, initials, prisma, timeAgo } from "@/lib";
+import { Avatar } from "@/avatar";
+import { getMe, prisma, timeAgo } from "@/lib";
+import { PeopleSearch } from "./search";
 
 const FILTERS = [
   { id: "", label: "All" },
+  { id: "unread", label: "Unread" },
   { id: "recent", label: "Recent" },
   { id: "campus", label: "Same campus" },
   { id: "new", label: "No chats yet" },
@@ -58,11 +61,13 @@ export default async function FriendsPage({
           (m.fromId === me.id && m.toId === friend.id) ||
           (m.fromId === friend.id && m.toId === me.id),
       );
-      return { friend, last };
+      const unread = dms.filter((m) => m.fromId === friend.id && m.toId === me.id && !m.seen).length;
+      return { friend, last, unread };
     })
-    .filter(({ friend, last }) => {
+    .filter(({ friend, last, unread }) => {
       const name = `${friend.firstName} ${friend.lastName}`.toLowerCase();
       if (q && !name.includes(q)) return false;
+      if (filter === "unread") return unread > 0;
       if (filter === "recent") return Boolean(last && last.createdAt.getTime() >= weekAgo);
       if (filter === "campus") {
         return Boolean(me.university && friend.university && me.university === friend.university);
@@ -71,6 +76,7 @@ export default async function FriendsPage({
       return true;
     })
     .sort((a, b) => {
+      if (a.unread !== b.unread) return b.unread - a.unread;
       const at = a.last ? a.last.createdAt.getTime() : 0;
       const bt = b.last ? b.last.createdAt.getTime() : 0;
       return bt - at;
@@ -87,22 +93,25 @@ export default async function FriendsPage({
   return (
     <div className="page chats-page">
       <header className="page-header" style={{ textAlign: "center" }}>
-        <h1 className="page-title">StudyBuddy Personal Chats</h1>
+        <h1 className="page-title">Buddies</h1>
       </header>
 
-      <form method="get" className="chat-search">
-        <input
-          className="field"
-          name="q"
-          defaultValue={qRaw || ""}
-          placeholder="Search a name"
-          style={{ margin: 0, flex: 1 }}
-        />
-        {filter ? <input type="hidden" name="filter" value={filter} /> : null}
-        <button className="btn" type="submit">
-          Search
-        </button>
-      </form>
+      <div className="chat-search">
+        <form method="get" className="chat-search-form">
+          <input
+            className="field"
+            name="q"
+            defaultValue={qRaw || ""}
+            placeholder="Search a name"
+            style={{ margin: 0, flex: 1 }}
+          />
+          {filter ? <input type="hidden" name="filter" value={filter} /> : null}
+          <button className="btn" type="submit">
+            Search
+          </button>
+        </form>
+        <PeopleSearch />
+      </div>
 
       <div className="chat-filters">
         {FILTERS.map((f) => (
@@ -117,12 +126,12 @@ export default async function FriendsPage({
           {incoming.map((row) => (
             <div key={row.id} className="chat-row" style={{ justifyContent: "space-between" }}>
               <Link href={`/profile/${row.from.id}`} className="chat-row-main">
-                <span className="avatar">{initials(row.from.firstName, row.from.lastName)}</span>
+                <Avatar user={row.from} />
                 <span className="chat-row-text">
                   <b>
                     {row.from.firstName} {row.from.lastName}
                   </b>
-                  <span className="chat-row-preview"> wants to be friends</span>
+                  <span className="chat-row-preview"> wants to be buddies</span>
                 </span>
               </Link>
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -148,7 +157,7 @@ export default async function FriendsPage({
 
       {known.size === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
-          No friends yet. <Link href="/find/buddies">Match a buddy</Link> or add someone from a meetup.
+          No buddies yet. <Link href="/find/buddies">Match a buddy</Link> or add someone from a meetup.
         </div>
       ) : threads.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
@@ -156,16 +165,21 @@ export default async function FriendsPage({
         </div>
       ) : (
         <div className="chat-list">
-          {threads.map(({ friend, last }) => {
+          {threads.map(({ friend, last, unread }) => {
             const preview = last?.text
               ? last.text
               : last?.fileName
                 ? "Sent an attachment"
                 : "Say hi";
             const when = last ? timeAgo(last.createdAt) : "";
+            const mine = last && last.fromId === me.id;
             return (
-              <Link key={friend.id} href={`/friends/${friend.id}`} className="chat-row">
-                <span className="avatar">{initials(friend.firstName, friend.lastName)}</span>
+              <Link
+                key={friend.id}
+                href={`/friends/${friend.id}`}
+                className={`chat-row${unread ? " unread" : ""}`}
+              >
+                <Avatar user={friend} />
                 <span className="chat-row-text">
                   <b>
                     {friend.firstName} {friend.lastName}:
@@ -173,6 +187,11 @@ export default async function FriendsPage({
                   <span className="chat-row-preview">{preview}</span>
                   {when ? <span className="chat-row-time"> - {when}</span> : null}
                 </span>
+                {unread > 0 ? (
+                  <span className="chat-badge">{unread}</span>
+                ) : mine ? (
+                  <span className={`chat-status${last.seen ? " read" : ""}`}>{last.seen ? "Read" : "Sent"}</span>
+                ) : null}
               </Link>
             );
           })}

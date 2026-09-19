@@ -15,6 +15,7 @@ export {
 } from "@/courses";
 export type { GroupKindId } from "@/courses";
 export { UNIVERSITIES, resolveUniversity } from "@/universities";
+export { MAJORS, resolveMajor } from "@/majors";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -87,6 +88,22 @@ export function formatTimeInput(value: string) {
   hour = hour % 12;
   if (hour === 0) hour = 12;
   return `${hour}:${String(minute).padStart(2, "0")} ${suffix}`;
+}
+
+/** Turn "6:00 PM" back into "18:00" for <input type="time">. */
+export function timeToInput(value: string) {
+  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(value.trim());
+  if (!match) {
+    const raw = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+    if (!raw) return "18:00";
+    return `${String(Number(raw[1])).padStart(2, "0")}:${raw[2]}`;
+  }
+  let hour = Number(match[1]);
+  const minute = match[2];
+  const suffix = match[3].toUpperCase();
+  if (suffix === "PM" && hour < 12) hour += 12;
+  if (suffix === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minute}`;
 }
 
 export function isValidMeetDate(value: string) {
