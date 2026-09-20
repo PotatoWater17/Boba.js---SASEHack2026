@@ -1,5 +1,5 @@
 /**
- * Re-download profile photos from the web for all users (no DB wipe).
+ * Re-download profile photos from the web for users without a bundled PFP.
  * Meme accounts use Wikipedia portraits; everyone else uses randomuser.me.
  */
 import { PrismaClient } from "@prisma/client";
@@ -139,7 +139,7 @@ async function main() {
   let skipped = 0;
   for (const user of users) {
     if (await hasBundledAvatar(user.email)) {
-      console.log(`  keep ${user.email} (bundled admin photo)`);
+      console.log(`  keep ${user.email} (bundled photo)`);
       skipped++;
       continue;
     }

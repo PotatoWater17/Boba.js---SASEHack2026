@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "exportedAt": "2026-09-20T02:15:25.183Z",
+  "exportedAt": "2026-09-20T22:20:18.737Z",
   "users": [
     {
       "email": "jsmith@auburn.edu",
       "password": "Password1!",
-      "firstName": "Daniel",
-      "lastName": "Taylor",
-      "pronouns": "",
+      "firstName": "Johnny",
+      "lastName": "Smith",
+      "pronouns": "I'm Him",
       "year": "",
       "major": "",
       "university": "Auburn University",
@@ -45,7 +45,7 @@
     {
       "email": "sam@auburn.edu",
       "password": "Password1!",
-      "firstName": "Sam",
+      "firstName": "Samantha",
       "lastName": "Rivera",
       "pronouns": "she/her",
       "year": "Freshman",
@@ -85,9 +85,9 @@
     {
       "email": "hailey@auburn.edu",
       "password": "Password1!",
-      "firstName": "Hailey",
+      "firstName": "Hayden",
       "lastName": "Brooks",
-      "pronouns": "she/her",
+      "pronouns": "he/him",
       "year": "Sophomore",
       "major": "Mathematics",
       "university": "Clemson University",
@@ -1161,6 +1161,186 @@
       "isAdmin": false,
       "showEmail": false,
       "accountNo": 59
+    },
+    {
+      "email": "jd@uab.edu",
+      "password": "Password1!",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "University of Alabama at Birmingham",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 60
+    },
+    {
+      "email": "kirky.bonbon@blue.edu",
+      "password": "Password1!",
+      "firstName": "Bonnie",
+      "lastName": "Kirk",
+      "pronouns": "they/them",
+      "year": "Senior",
+      "major": "",
+      "university": "Charlie Blue",
+      "bio": "Freshman",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 61
+    },
+    {
+      "email": "michael@desanta.org",
+      "password": "Password1!",
+      "firstName": "Michael",
+      "lastName": "De Santa",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "Townley University",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 62
+    },
+    {
+      "email": "frankclint@sanandreas.org",
+      "password": "Password1!",
+      "firstName": "Franklin",
+      "lastName": "Clinton",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "San Andreas University",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 63
+    },
+    {
+      "email": "trevor@tpi.org",
+      "password": "Password1!",
+      "firstName": "Trevor",
+      "lastName": "Philips",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "Townley University",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 64
+    },
+    {
+      "email": "jason@vsu.org",
+      "password": "Password1!",
+      "firstName": "Jason",
+      "lastName": "Duval",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "Vice City University",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 65
+    },
+    {
+      "email": "lucia@vsu.org",
+      "password": "Password1!",
+      "firstName": "Lucia",
+      "lastName": "Caminos",
+      "pronouns": "",
+      "year": "",
+      "major": "",
+      "university": "Vice City University",
+      "bio": "",
+      "needHelp": "",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 66
+    },
+    {
+      "email": "george@auburn.edu",
+      "password": "Password1!",
+      "firstName": "George",
+      "lastName": "B",
+      "pronouns": "",
+      "year": "Freshman",
+      "major": "Electrical Engineering",
+      "university": "Auburn University",
+      "bio": "The best Pillow pet",
+      "needHelp": "Physics 2",
+      "canHelp": "Calc 1",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 67
+    },
+    {
+      "email": "georgeb@auburn.edu",
+      "password": "Password1!",
+      "firstName": "George",
+      "lastName": "Brooks",
+      "pronouns": "",
+      "year": "Freshman",
+      "major": "",
+      "university": "Auburn University",
+      "bio": "",
+      "needHelp": "Physics 2",
+      "canHelp": "",
+      "examCourse": "",
+      "examDate": "",
+      "examTopics": "",
+      "studyStyle": "",
+      "isAdmin": false,
+      "showEmail": false,
+      "accountNo": 68
     }
   ],
   "friendships": [
@@ -1182,7 +1362,7 @@
     {
       "fromEmail": "sam@auburn.edu",
       "toEmail": "jsmith@auburn.edu",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "zuck.meme@auburn.edu",
@@ -1192,7 +1372,7 @@
     {
       "fromEmail": "drizzy.meme@auburn.edu",
       "toEmail": "jsmith@auburn.edu",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "mr.beast.meme@auburn.edu",
@@ -1357,22 +1537,22 @@
     {
       "fromEmail": "cr7@alnassr.org",
       "toEmail": "lamineyamal@fcbarca.org",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "cr7@alnassr.org",
       "toEmail": "mbappe@realmadrid.org",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "cr7@alnassr.org",
       "toEmail": "sonming@lafc.org",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "cr7@alnassr.org",
       "toEmail": "bellingham@realmadrid.org",
-      "status": "pending"
+      "status": "accepted"
     },
     {
       "fromEmail": "ishowspeed@sewey.org",
@@ -1388,6 +1568,181 @@
       "fromEmail": "aidenb@auburn.edu",
       "toEmail": "henry@auburn.edu",
       "status": "pending"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "ryanh@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "henry@auburn.edu",
+      "status": "pending"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "messi@intermiami.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "ishowspeed@sewey.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "kaicenat@streamer.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "jynxzi@siegechamp.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "lamineyamal@fcbarca.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "sonming@lafc.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "mbappe@realmadrid.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bryanm@auburn.edu",
+      "toEmail": "bellingham@realmadrid.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "jynxzi@siegechamp.org",
+      "toEmail": "marlon@streamer.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lamineyamal@fcbarca.org",
+      "toEmail": "messi@intermiami.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lamineyamal@fcbarca.org",
+      "toEmail": "mbappe@realmadrid.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lamineyamal@fcbarca.org",
+      "toEmail": "bellingham@realmadrid.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "sonming@lafc.org",
+      "toEmail": "danielk@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "mbappe@realmadrid.org",
+      "toEmail": "messi@intermiami.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bellingham@realmadrid.org",
+      "toEmail": "mbappe@realmadrid.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "bellingham@realmadrid.org",
+      "toEmail": "messi@intermiami.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "michael@desanta.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "frankclint@sanandreas.org",
+      "toEmail": "michael@desanta.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "frankclint@sanandreas.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "trevor@tpi.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "trevor@tpi.org",
+      "toEmail": "frankclint@sanandreas.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "trevor@tpi.org",
+      "toEmail": "michael@desanta.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "jason@vsu.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "jason@vsu.org",
+      "toEmail": "michael@desanta.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "jason@vsu.org",
+      "toEmail": "frankclint@sanandreas.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "jason@vsu.org",
+      "toEmail": "trevor@tpi.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lucia@vsu.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lucia@vsu.org",
+      "toEmail": "michael@desanta.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lucia@vsu.org",
+      "toEmail": "frankclint@sanandreas.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lucia@vsu.org",
+      "toEmail": "trevor@tpi.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "lucia@vsu.org",
+      "toEmail": "jason@vsu.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "aidenb@auburn.edu",
+      "toEmail": "george@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "georgeb@auburn.edu",
+      "toEmail": "al.einstein@auburn.edu",
+      "status": "accepted"
     }
   ]
 }

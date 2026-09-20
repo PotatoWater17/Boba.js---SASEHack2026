@@ -127,7 +127,7 @@ To stop the server, click that terminal and press `Ctrl+C` (same on Mac, Windows
 
 | Who | Email | Password |
 |-----|-------|----------|
-| Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
+| Main demo (Johnny) | `jsmith@auburn.edu` | `Password1!` |
 | Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
 | Dev team | `aidenb@`, `bryanm@`, `danielk@` `@auburn.edu` | `AidenB`, `BryanM`, `DanielK` |
 
@@ -211,7 +211,7 @@ After cloning or pulling schema changes, always sync the DB **and** regenerate t
 | `npm run db:push` | Apply Prisma schema to SQLite |
 | `npm run db:seed` | Seed demo data only |
 | `npm run db:demo-full` | Full demo reset (recommended for judges) |
-| `npm run db:restore-accounts` | Restore profiles from snapshot and admin PFPs from `prisma/seed-avatars/` |
+| `npm run db:restore-accounts` | Restore profiles + PFPs from snapshot and `prisma/seed-avatars/` |
 
 ---
 

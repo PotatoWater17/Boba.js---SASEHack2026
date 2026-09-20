@@ -1,5 +1,5 @@
 /**
- * Admin (and other committed) profile photos live in prisma/seed-avatars/.
+ * Committed profile photos live in prisma/seed-avatars/ (one file per email local-part).
  * Runtime copies go to uploads/avatars/, which is gitignored.
  */
 import { copyFile, mkdir, readdir, unlink } from "fs/promises";

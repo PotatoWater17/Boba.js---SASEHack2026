@@ -57,13 +57,14 @@ async function main() {
   await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
 
   let photos = 0;
+  let photoMiss = 0;
   for (const u of users) {
-    if (!u.isAdmin) continue;
     if (await backupBundledAvatar(u.email, u.photoKey)) photos++;
+    else if (u.photoKey) photoMiss++;
   }
 
   console.log(`Backed up ${snapshot.users.length} accounts and ${snapshot.friendships.length} friendships → ${SNAPSHOT_PATH}`);
-  console.log(`Saved ${photos} admin profile photos → prisma/seed-avatars/`);
+  console.log(`Saved ${photos} profile photos → prisma/seed-avatars/${photoMiss ? ` (${photoMiss} photo files missing)` : ""}`);
   console.log("Commit the snapshot and prisma/seed-avatars/ so GitHub clones restore the same users and PFPs.");
 }
 

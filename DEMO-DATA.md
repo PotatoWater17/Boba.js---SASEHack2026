@@ -1,8 +1,8 @@
 # Demo data reference
 
 **Source of truth:** `prisma/seed.ts` (full wipe + recreate).  
-**Account profiles (git backup):** `prisma/accounts.snapshot.json` — all 51 live demo users + friendships.  
-**Admin profile photos (git backup):** `prisma/seed-avatars/` — Ryan, Aiden, Bryan, and Daniel PFPs. 
+**Account profiles (git backup):** `prisma/accounts.snapshot.json` — all 67 live demo users + friendships.  
+**Profile photos (git backup):** `prisma/seed-avatars/` — 66 committed PFPs (every account that has a photo).  
 **Non-destructive add-ons:** `scripts/patch-demo-world.ts`, `scripts/seed-ryan-friends.ts`, `scripts/restore-team.ts`.
 
 Use this doc to restore demo profiles, friendships, DMs, and group chats after schema changes or accidental DB edits.
@@ -42,7 +42,7 @@ npm run db:refresh-avatars # optional
 | Account type | Password |
 |--------------|----------|
 | Dev team (`ryanh`, `aidenb`, `bryanm`, `danielk`) | `RyanH`, `AidenB`, `BryanM`, `DanielK` |
-| Everyone else (Jordan, cross-school users, all meme accounts) | `Password1!` |
+| Everyone else | `Password1!` |
 
 All accounts use `@auburn.edu` emails (meme accounts too — they’re Auburn parodies).
 
@@ -50,7 +50,7 @@ All accounts use `@auburn.edu` emails (meme accounts too — they’re Auburn pa
 
 ## Dev team (admin, Auburn)
 
-All four are `isAdmin: true` and fully friends with each other. Profile photos are stored in **`prisma/seed-avatars/`** (committed) so clones keep the same PFPs.
+All four are `isAdmin: true` and fully friends with each other. Their (and every other demo) profile photos live in **`prisma/seed-avatars/`**.
 
 | Email | Password | Name | Year | Major | needHelp | canHelp |
 |-------|----------|------|------|-------|----------|---------|
@@ -74,22 +74,21 @@ All four are `isAdmin: true` and fully friends with each other. Profile photos a
 
 | Email | Password | Name | School | Year | Major |
 |-------|----------|------|--------|------|-------|
-| `jsmith@auburn.edu` | `Password1!` | Jordan Taylor (they/them) | Auburn University | Sophomore | Computer Science |
-| `alex@auburn.edu` | `Password1!` | Alex Nguyen (he/him) | Georgia Tech | Junior | Software Engineering |
-| `sam@auburn.edu` | `Password1!` | Sam Rivera (she/her) | The University of Alabama | Freshman | Computer Science |
-| `henry@auburn.edu` | `Password1!` | Henry Park (he/him) | University of Georgia | Junior | Computer Science |
-| `hailey@auburn.edu` | `Password1!` | Hailey Brooks (she/her) | Clemson University | Sophomore | Mathematics |
+| `jsmith@auburn.edu` | `Password1!` | Johnny Smith (“I'm Him”) | Auburn University | — | — |
+| `alex@auburn.edu` | `Password1!` | Alexxis Jones (she/her) | Georgia Tech | Junior | Software Engineering |
+| `sam@auburn.edu` | `Password1!` | Samantha Rivera (she/her) | The University of Alabama | Freshman | Computer Science |
+| `henry@auburn.edu` | `Password1!` | Henry Lam (he/him) | Auburn University | Senior | Software Engineering |
+| `hailey@auburn.edu` | `Password1!` | Hayden Brooks (he/him) | Clemson University | Sophomore | Mathematics |
 
-**Jordan (`jsmith`) — main judge demo account**
+**Johnny (`jsmith`) — main judge demo account**
 
-- Bio: Sophomore CS, whiteboard sessions, calc/discrete grind.
-- needHelp: Calc 2, Physics 1 · canHelp: Intro to Programming, Discrete Math
-- Exam prep: Calc 2 · topics: Series, U-substitution, Integration by parts · style: Exam review
+- Profile is intentionally sparse for a first-run demo login.
+- Pronouns: “I'm Him”
 
-**Alex** — Exam: Data Structures (trees, heaps, Big-O) · style: Practice problems  
-**Sam** — Exam: Calc 2 (U-sub, polar) · style: Homework help  
-**Hailey** — Exam: Calc 2 (series, Taylor) · style: Exam review  
-**Henry** — No exam fields seeded (Physics 1 needHelp)
+**Alexxis** — Exam: Data Structures (trees, heaps, Big-O) · style: Practice problems  
+**Samantha** — Exam: Calc 2 (U-sub, polar) · style: Homework help  
+**Hayden** — Exam: Calc 2 (series, Taylor) · style: Exam review  
+**Henry** — needHelp: Computer Architecture · canHelp: Calc 1/2, programming, algorithms
 
 ---
 
@@ -266,35 +265,51 @@ Seed also creates **15 additional meetings** (`EXTRA` array in `seed.ts`) hosted
 | `db:reset` | `prisma db push --force-reset` + `prisma db seed` — **wipes all users, chats, meetups** |
 | `db:seed` | Run seed only (no schema reset) |
 | `db:demo-full` | `db:reset` + `db:ryan-friends` + `db:restore-accounts` — **full demo in one command** |
-| `db:backup-accounts` | Export live DB users → `prisma/accounts.snapshot.json` and admin PFPs → `prisma/seed-avatars/` (commit both) |
-| `db:restore-accounts` | Upsert users + friendships from snapshot; copy bundled admin photos (idempotent) |
+| `db:backup-accounts` | Export live DB users → `prisma/accounts.snapshot.json` and all PFPs → `prisma/seed-avatars/` (commit both) |
+| `db:restore-accounts` | Upsert users + friendships from snapshot; copy bundled profile photos (idempotent) |
 | `db:restore-team` | Upsert 4 dev accounts + mutual friendships (does not overwrite edited profile fields) |
 | `db:patch-demo` | Fix universities, exam fields, dev/cross-school meetups, dev DMs (idempotent) |
 | `db:ryan-friends` | Ryan’s extended buddies + Ryan-specific DMs (idempotent) |
 | `db:meme-meetups` | Meme study groups + funny group chat threads (idempotent) |
-| `db:refresh-avatars` | Re-fetch profile photos (skips bundled admin PFPs) |
+| `db:refresh-avatars` | Re-fetch profile photos (skips any email that already has a bundled PFP) |
 
 ---
 
 ## Extra demo accounts (in snapshot)
 
-These are not in `seed.ts` but are restored from **`prisma/accounts.snapshot.json`**:
+These are not in `seed.ts` but are restored from **`prisma/accounts.snapshot.json`**. Password: **`Password1!`**.
 
-| Email | Password | Name | University |
-|-------|----------|------|------------|
-| `spiderman@esu.edu` | `Password1!` | Spider-Man | Stark University |
-| `marlon@streamer.edu` | `Password1!` | Marlon Garcia | Streamer University |
-| `messi@intermiami.org` | `Password1!` | Lionel Messi | FC Barcelona |
-| `cr7@alnassr.org` | `Password1!` | Cristiano Ronaldo | Al Nassr |
+| Email | Name | University |
+|-------|------|------------|
+| `spiderman@esu.edu` | Spider -Man | Stark University |
+| `marlon@streamer.edu` | Marlon Garcia | Streamer University |
+| `messi@intermiami.org` | Lionel Messi | FC Barcelona |
+| `cr7@alnassr.org` | Cristiano Ronaldo | Al Nassr |
+| `ishowspeed@sewey.org` | Darren Watkins | Ronaldo University |
+| `kaicenat@streamer.edu` | Kai Cenat | Streamer University |
+| `jynxzi@siegechamp.org` | Nicholas Stewart | R6 University |
+| `lamineyamal@fcbarca.org` | Lamine Yamal | FC Barcelona |
+| `sonming@lafc.org` | Son Heung-min | Los Angeles FC |
+| `mbappe@realmadrid.org` | Kylian Mbappé | Real Madrid |
+| `bellingham@realmadrid.org` | Jude Bellingham | Real Madrid |
+| `jd@uab.edu` | Jane Doe | UAB (no PFP) |
+| `kirky.bonbon@blue.edu` | Bonnie Kirk | Charlie Blue |
+| `michael@desanta.org` | Michael De Santa | Townley University |
+| `frankclint@sanandreas.org` | Franklin Clinton | San Andreas University |
+| `trevor@tpi.org` | Trevor Philips | Townley University |
+| `jason@vsu.org` | Jason Duval | Vice City University |
+| `lucia@vsu.org` | Lucia Caminos | Vice City University |
+| `george@auburn.edu` | George B | Auburn University |
+| `georgeb@auburn.edu` | George Brooks | Auburn University |
 
 ---
 
 ## Editing demo data
 
-1. Edit profiles in the app (or DB), then run **`npm run db:backup-accounts`** and commit **`prisma/accounts.snapshot.json`** plus any new files in **`prisma/seed-avatars/`** (admin PFPs).
+1. Edit profiles in the app (or DB), then run **`npm run db:backup-accounts`** and commit **`prisma/accounts.snapshot.json`** plus any new files in **`prisma/seed-avatars/`**.
 2. Change **`prisma/seed.ts`** for meetups, DMs, and base structure on `db:reset`.
 3. Change **`scripts/seed-ryan-friends.ts`** for Ryan-only buddy/DM extras.
 4. Change **`scripts/patch-demo-world.ts`** for idempotent patches on live DBs.
 5. Update **this file** when adding accounts or chat content so the team can restore.
 
-**Do not** rely on manual DB edits alone — run `db:backup-accounts` and commit the snapshot (and `prisma/seed-avatars/` for admin photos) so GitHub/demo clones get the same users.
+**Do not** rely on manual DB edits alone — run `db:backup-accounts` and commit the snapshot and `prisma/seed-avatars/` so GitHub/demo clones get the same users and photos.
