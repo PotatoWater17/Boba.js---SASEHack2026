@@ -25,7 +25,6 @@ export default async function LoginPage({
 
   return (
     <AuthPage
-      brand="lockup"
       title="Login"
       footer={
         <p className="auth-switch">

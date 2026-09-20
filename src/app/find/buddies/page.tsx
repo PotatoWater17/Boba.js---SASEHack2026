@@ -2,16 +2,23 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, addFriend } from "@/app/actions";
 import { MatchNotify } from "./notify";
-import { ClassBubbles, ExamPrepFields, MajorPicker, UniversityPicker } from "@/ui";
+import { ExamPrepFields, MajorPicker, UniversityPicker } from "@/ui";
 import { Avatar } from "@/avatar";
-import { blockedUserIds, buddyMatch, formatMeetDate, getMe, prisma, splitList } from "@/lib";
+import {
+  blockedUserIds,
+  buddyMatch,
+  examMeetupScore,
+  formatMeetDate,
+  getMe,
+  groupKindLabel,
+  prisma,
+  splitList,
+} from "@/lib";
 
 export default async function FindBuddiesPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    needHelp?: string;
-    canHelp?: string;
     university?: string;
     major?: string;
     examCourse?: string;
@@ -26,8 +33,6 @@ export default async function FindBuddiesPage({
 
   const q = await searchParams;
   const submitted =
-    "needHelp" in q ||
-    "canHelp" in q ||
     "university" in q ||
     "major" in q ||
     "examCourse" in q ||
@@ -36,9 +41,11 @@ export default async function FindBuddiesPage({
     "studyStyle" in q ||
     "year" in q;
 
+  const profileCanHelp = splitList(me.canHelp);
+
   const prefs = {
-    needHelp: submitted ? String(q.needHelp || "") : me.needHelp,
-    canHelp: submitted ? String(q.canHelp || "") : me.canHelp,
+    needHelp: me.needHelp,
+    canHelp: me.canHelp,
     university: submitted ? String(q.university || "") : me.university,
     major: submitted ? String(q.major || "") : me.major,
     examCourse: submitted ? String(q.examCourse || "") : me.examCourse,
@@ -49,8 +56,6 @@ export default async function FindBuddiesPage({
   };
 
   const stayParams = new URLSearchParams();
-  stayParams.set("needHelp", prefs.needHelp);
-  stayParams.set("canHelp", prefs.canHelp);
   stayParams.set("university", prefs.university);
   stayParams.set("major", prefs.major);
   stayParams.set("examCourse", prefs.examCourse);
@@ -117,6 +122,44 @@ export default async function FindBuddiesPage({
     prefs.studyStyle ? prefs.studyStyle : "",
   ].filter(Boolean);
 
+  let matchingGroups: {
+    id: string;
+    subject: string;
+    topic: string;
+    meetDate: string;
+    time: string;
+    location: string;
+    style: string;
+    groupKind: string;
+    members: { length: number };
+    maxSize: number;
+    score: number;
+  }[] = [];
+
+  if (submitted && (prefs.examCourse || prefs.examTopics || prefs.studyStyle)) {
+    const publicMeetings = await prisma.meeting.findMany({
+      where: { isPrivate: false },
+      include: { _count: { select: { members: true } } },
+    });
+    matchingGroups = publicMeetings
+      .map((m) => ({
+        id: m.id,
+        subject: m.subject,
+        topic: m.topic,
+        meetDate: m.meetDate,
+        time: m.time,
+        location: m.location,
+        style: m.style,
+        groupKind: m.groupKind,
+        members: { length: m._count.members },
+        maxSize: m.maxSize,
+        score: examMeetupScore(prefs, m),
+      }))
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+  }
+
   return (
     <div className="page motion-page-enter" style={{ maxWidth: 680 }}>
       <header className="page-header">
@@ -125,8 +168,8 @@ export default async function FindBuddiesPage({
         </Link>
         <h1 className="page-title">Find Your Buddies</h1>
         <p>
-          Match with classmates who can help you prep for upcoming exams — same course, topics, campus, and study
-          style.
+          Match with classmates prepping for the same exam — we use your profile, exam subject &amp; topics, and
+          study groups you both fit.
         </p>
       </header>
 
@@ -142,10 +185,6 @@ export default async function FindBuddiesPage({
       ) : null}
 
       <form method="get" className="box" style={{ marginBottom: 28 }}>
-        <h3 className="form-section-title">Classes</h3>
-        <ClassBubbles label="Classes I need help in" name="needHelp" initial={splitList(prefs.needHelp)} />
-        <ClassBubbles label="Classes I can help with" name="canHelp" initial={splitList(prefs.canHelp)} />
-
         <h3 className="form-section-title">Exam prep</h3>
         <ExamPrepFields
           defaultCourse={prefs.examCourse}
@@ -156,12 +195,28 @@ export default async function FindBuddiesPage({
           defaultYear={prefs.year}
         />
 
-        <h3 className="form-section-title">Campus & major</h3>
+        <h3 className="form-section-title">Campus &amp; major</h3>
         <UniversityPicker defaultValue={prefs.university} required={false} />
         <MajorPicker defaultValue={prefs.major} required={false} />
 
+        <p className="text-muted buddies-profile-hint" style={{ fontSize: 14, margin: "0 0 16px" }}>
+          {profileCanHelp.length ? (
+            <>
+              Matching also uses classes you can help with from your profile:{" "}
+              <strong>{profileCanHelp.join(", ")}</strong>.{" "}
+              <Link href={`/profile/${me.id}?edit=1`}>Edit profile</Link>
+            </>
+          ) : (
+            <>
+              Add classes you can help with on{" "}
+              <Link href={`/profile/${me.id}?edit=1`}>your profile</Link> so we can match you with students who
+              need a tutor.
+            </>
+          )}
+        </p>
+
         <button className="btn" type="submit">
-          Find exam prep buddies
+          Find Your Buddies
         </button>
       </form>
 
@@ -172,15 +227,55 @@ export default async function FindBuddiesPage({
         </p>
       ) : null}
 
+      {submitted && matchingGroups.length ? (
+        <section style={{ marginBottom: 28 }}>
+          <h2 className="section-title">Study groups for your exam</h2>
+          <p className="text-muted" style={{ marginTop: -8, marginBottom: 12, fontSize: 14 }}>
+            Public groups matching your subject, topics, or study style.
+          </p>
+          <div className="found-list">
+            {matchingGroups.map((g, i) => {
+              const topic = g.topic.split(",")[0]?.trim();
+              return (
+                <div
+                  key={g.id}
+                  className="card found-mini motion-stagger-item"
+                  style={{ ["--motion-delay" as string]: `${i * 40}ms` }}
+                >
+                  <Link href={`/meetings/${g.id}`} className="found-mini-main">
+                    <span className="avatar group-avatar">{g.subject.slice(0, 2).toUpperCase()}</span>
+                    <span className="found-mini-text">
+                      <b>
+                        {g.subject}
+                        {topic ? ` — ${topic}` : ""}
+                      </b>
+                      <span className="found-mini-meta">
+                        {[formatMeetDate(g.meetDate), g.time, g.location].filter(Boolean).join(" · ")}
+                      </span>
+                      <span className="found-mini-meta">
+                        {groupKindLabel(g.groupKind)} · {g.style} · {g.members.length}/{g.maxSize}
+                      </span>
+                    </span>
+                  </Link>
+                  <Link className="btn" href={`/meetings/${g.id}`}>
+                    View
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {submitted ? (
         !pick ? (
           <div className="card">
-            Nobody lined up with those preferences yet. Try widening your course or campus, add exam topics, or{" "}
+            Nobody lined up with those preferences yet. Try widening your subject or campus, add exam topics, or{" "}
             <Link href="/find/browse">browse exam review meetups</Link>.
           </div>
         ) : (
           <section>
-            <h2 className="section-title">Matches</h2>
+            <h2 className="section-title">Buddy matches</h2>
             <div className="found-list">
               {ranked.slice(0, 12).map(({ user, reasons, bond }, i) => {
                 const bits = [user.year, user.major, user.university].filter(Boolean);
@@ -188,6 +283,7 @@ export default async function FindBuddiesPage({
                   user.examCourse ? `${user.examCourse} exam` : "",
                   user.examDate ? formatMeetDate(user.examDate) : "",
                 ].filter(Boolean);
+                const canHelp = splitList(user.canHelp);
                 return (
                   <div
                     key={user.id}
@@ -201,6 +297,9 @@ export default async function FindBuddiesPage({
                           {user.firstName} {user.lastName}
                         </b>
                         {bits.length ? <span className="found-mini-meta">{bits.join(" · ")}</span> : null}
+                        {canHelp.length ? (
+                          <span className="found-mini-meta">Can help: {canHelp.slice(0, 3).join(", ")}</span>
+                        ) : null}
                         {examMeta.length ? (
                           <span className="found-mini-meta">Prepping: {examMeta.join(" · ")}</span>
                         ) : null}

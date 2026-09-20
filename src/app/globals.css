@@ -61,9 +61,26 @@
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: var(--offwhite);
   color: var(--ink);
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
 }
 
 /* Keep horizontal clip off body so .nav position:sticky works (about page scroll). */
@@ -242,17 +259,6 @@ button {
 .auth-brand {
   display: flex;
   justify-content: center;
-}
-
-.auth-mascot {
-  width: 88px;
-  height: 88px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 12px;
-  border: 3px solid var(--accent);
-  background: var(--offwhite);
-  display: block;
 }
 
 .auth-brand-lockup {
@@ -1203,38 +1209,21 @@ button.pill {
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 28px;
-  align-items: center;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 24px;
 }
 
-.hero-img {
-  width: 100%;
-  max-width: 220px;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 16px;
-  border: 4px solid var(--accent);
-  background: var(--offwhite);
-  display: block;
+.about-hero-main {
+  display: grid;
+  gap: 16px;
 }
 
 @media (max-width: 640px) {
   .hero {
-    grid-template-columns: 1fr;
     text-align: center;
     padding: 16px;
-    gap: 16px;
-  }
-
-  .hero-img {
-    margin: 0 auto;
-    max-width: 180px;
   }
 
   .brand-lockup-lg {

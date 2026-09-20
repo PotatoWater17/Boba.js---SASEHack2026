@@ -322,6 +322,43 @@ function pushReason(reasons: string[], reason: string) {
   if (!reasons.includes(reason)) reasons.push(reason);
 }
 
+/** Classes you're prepping for — profile needHelp plus exam subject. */
+function effectiveNeed(prefs: BuddySearchPrefs) {
+  const need = splitList(prefs.needHelp);
+  const course = (prefs.examCourse || "").trim();
+  if (course && !need.some((c) => classOverlap(c, course))) {
+    need.unshift(course);
+  }
+  return need;
+}
+
+/** Score a public meetup against exam-prep search prefs. */
+export function examMeetupScore(
+  prefs: Pick<BuddySearchPrefs, "examCourse" | "examTopics" | "examDate" | "studyStyle" | "university">,
+  meetup: BuddyMeetupLite & { university?: string },
+) {
+  let score = 0;
+  const course = (prefs.examCourse || "").trim();
+  const topics = splitList(prefs.examTopics || "");
+  const meetTopics = splitList(meetup.topic);
+
+  if (course && classOverlap(meetup.subject, course)) score += 100;
+  if (topics.length && topicListOverlap(topics, meetTopics) > 0) score += 40;
+  if (prefs.studyStyle?.trim() && meetup.style === prefs.studyStyle) score += 35;
+  if (
+    prefs.university?.trim() &&
+    meetup.university?.trim() &&
+    prefs.university.trim().toLowerCase() === meetup.university.trim().toLowerCase()
+  ) {
+    score += 25;
+  }
+  if (prefs.examDate && meetup.meetDate) {
+    const beforeExam = daysBetweenDates(meetup.meetDate, prefs.examDate);
+    if (beforeExam !== null && beforeExam >= 0 && beforeExam <= 14) score += 20;
+  }
+  return score;
+}
+
 /** Score another student against your classes, campus, exam prep, and major. */
 export function buddyMatch(
   me: BuddySearchPrefs,
@@ -332,7 +369,7 @@ export function buddyMatch(
     return { score: 0, reasons: [] as string[] };
   }
 
-  const myNeed = splitList(me.needHelp);
+  const myNeed = effectiveNeed(me);
   const myHelp = splitList(me.canHelp);
   const theirNeed = splitList(other.needHelp);
   const theirHelp = splitList(other.canHelp);
@@ -411,27 +448,33 @@ export function buddyMatch(
     pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
   }
 
-  if (examCourse && meetups.length) {
+  if (meetups.length && (examCourse || myExamTopics.length || me.studyStyle)) {
     for (const m of meetups) {
-      if (!classOverlap(m.subject, examCourse)) continue;
-      score += 40;
-      pushReason(reasons, `has ${m.subject} meetup`);
+      const subjectMatch = examCourse && classOverlap(m.subject, examCourse);
+      const meetTopics = splitList(m.topic);
+      const topicMatch = myExamTopics.length > 0 && topicListOverlap(myExamTopics, meetTopics) > 0;
+      const styleMatch = Boolean(me.studyStyle?.trim() && m.style === me.studyStyle);
+      if (!subjectMatch && !topicMatch && !styleMatch) continue;
+
+      if (subjectMatch) {
+        score += 45;
+        pushReason(reasons, `in ${m.subject} study group`);
+      }
+      if (topicMatch) {
+        score += 30;
+        pushReason(reasons, "group covers your topics");
+      }
+      if (styleMatch) {
+        score += 20;
+        pushReason(reasons, `group uses ${m.style.toLowerCase()}`);
+      }
       if (me.examDate && m.meetDate) {
         const beforeExam = daysBetweenDates(m.meetDate, me.examDate);
         if (beforeExam !== null && beforeExam >= 0 && beforeExam <= 10) {
           score += 25;
-          pushReason(reasons, "meetup before your exam");
+          pushReason(reasons, "group meets before your exam");
         }
       }
-      if (me.studyStyle && m.style === me.studyStyle) {
-        score += 15;
-      }
-      const meetTopics = splitList(m.topic);
-      if (myExamTopics.length && topicListOverlap(myExamTopics, meetTopics) > 0) {
-        score += 20;
-        pushReason(reasons, "meetup covers your topics");
-      }
-      break;
     }
   }
 

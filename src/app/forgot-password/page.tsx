@@ -25,7 +25,6 @@ export default async function ForgotPasswordPage({
 
   return (
     <AuthPage
-      brand="lockup"
       title="Forgot Password"
       footer={
         <p className="auth-switch">

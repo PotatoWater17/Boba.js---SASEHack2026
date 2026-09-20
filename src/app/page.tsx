@@ -24,15 +24,7 @@ export default async function IntroPage() {
       <div className="about-hero-stage motion-hero-stage">
         <div className="page about-hero-wrap">
           <div className="hero about-hero">
-            <Image
-              src="/teddy-bear-face.jpg"
-              alt="StudyBuddyBoard teddy mascot"
-              width={440}
-              height={440}
-              className="hero-img motion-hero-item motion-hero-d1"
-              priority
-            />
-            <div>
+            <div className="about-hero-main">
               <p className="eyebrow motion-hero-item motion-hero-d2">Built for college students</p>
               <BrandLockup size="lg" titleAs="h1" className="motion-hero-item motion-hero-d3" />
               <p className="about-hero-copy motion-hero-item motion-hero-d4">

@@ -23,7 +23,6 @@ export default async function SignupPage({
 
   return (
     <AuthPage
-      brand="lockup"
       title="Sign Up"
       footer={
         <p className="auth-switch">

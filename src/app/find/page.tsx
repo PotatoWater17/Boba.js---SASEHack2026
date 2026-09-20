@@ -20,7 +20,7 @@ export default async function FindPage() {
           style={{ ["--motion-delay" as string]: "0ms" }}
         >
           <b>Find Your Buddies</b>
-          <span>Pick a subject and topics to focus on — we&apos;ll match you with the best prep buddies.</span>
+          <span>Tell us your exam subject and topics — we&apos;ll match buddies and study groups from your profile.</span>
         </Link>
         <Link
           className="btn find-hub-btn motion-stagger-item"

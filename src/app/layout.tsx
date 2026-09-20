@@ -16,10 +16,6 @@ import "../motion/motion.css";
 export const metadata: Metadata = {
   title: "StudyBuddyBoard",
   description: "Fuel the grind. Find study groups with classmates.",
-  icons: {
-    icon: "/teddy-bear-face.jpg",
-    apple: "/teddy-bear-face.jpg",
-  },
 };
 
 export const viewport: Viewport = {
