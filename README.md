@@ -1,6 +1,8 @@
 # StudyBuddyBoard
 
-SASEHack 2026 — a campus study-group app for finding exam prep buddies, joining study groups, and coordinating over chat.
+StudyBuddyBoard matches students by course, campus, and study style. No messy GroupMe posts or random feeds. Just targeted groups, native chat, and shared goals. Same exam. Same grind. Max efficiency.
+
+SASEHack 2026 · Auburn University — Ryan · Aiden · Bryan · Daniel
 
 ## What it does
 
@@ -8,6 +10,16 @@ SASEHack 2026 — a campus study-group app for finding exam prep buddies, joinin
 - **Browse / create study groups** — public groups with filters (subject, format, size, style)
 - **Buddy DMs + group chat** — attachments, reactions, meetup invites
 - **Buddy Board dashboard** — upcoming groups, calendar, unread messages
+
+## For judges
+
+1. Follow **How to run it** below, then open **http://localhost:3000**
+2. Log in as **`ryanh@auburn.edu` / `RyanH`** (fullest demo: buddies, DMs, groups, admin)
+3. Try **Find Buddies** → **Browse** groups → open a group chat → **Buddy Board** dashboard
+
+Backup login: `jsmith@auburn.edu` / `Password1!`
+
+Run it locally — that’s the official demo for submission.
 
 ---
 
@@ -212,16 +224,6 @@ After cloning or pulling schema changes, always sync the DB **and** regenerate t
 | `npm run db:seed` | Seed demo data only |
 | `npm run db:demo-full` | Full demo reset (recommended for judges) |
 | `npm run db:restore-accounts` | Restore profiles + PFPs from snapshot and `prisma/seed-avatars/` |
-
----
-
-## Optional: public dev URL (temporary)
-
-During the hackathon, a Cloudflare quick tunnel may be used so judges can try the app without cloning:
-
-**https://lawn-guests-cologne-dancing.trycloudflare.com**
-
-This only works while someone’s laptop is running both `npm run dev` and `cloudflared tunnel --url http://127.0.0.1:3000`. The URL changes when the tunnel restarts. For a reliable demo, run locally or deploy to a host (Vercel, Railway, etc.) with a real database and `SESSION_SECRET`.
 
 ---
 

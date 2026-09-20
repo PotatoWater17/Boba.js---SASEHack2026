@@ -69,7 +69,7 @@ export default async function ProfilePage({
         <header className="page-header">
           <h1 className="page-title">Edit Profile</h1>
         </header>
-        <form action={updateProfile} className="box" encType="multipart/form-data">
+        <form action={updateProfile} className="box">
           {error === "save" ? (
             <p className="err">Could not save profile. Restart the dev server and run npx prisma generate, then try again.</p>
           ) : null}

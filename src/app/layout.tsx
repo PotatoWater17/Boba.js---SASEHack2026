@@ -15,7 +15,8 @@ import "../motion/motion.css";
 
 export const metadata: Metadata = {
   title: "StudyBuddyBoard",
-  description: "Fuel the grind. Find study groups and buddies on campus.",
+  description:
+    "StudyBuddyBoard matches students by course, campus, and study style. Targeted groups, native chat, shared goals. Same exam. Same grind. Max efficiency.",
 };
 
 export const viewport: Viewport = {
