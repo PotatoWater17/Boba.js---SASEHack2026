@@ -92,9 +92,9 @@ export function InviteBuddies({
   if (buddies.length === 0) {
     return (
       <div className="card" style={{ marginTop: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
+        <h3 className="card-section-title">Invite Buddies</h3>
         <p className="text-muted" style={{ margin: 0 }}>
-          No buddies left to invite. Add buddies from Find Your Buddies first.
+          No buddies left to invite. Add buddies from Find Buddies first.
         </p>
       </div>
     );
@@ -102,7 +102,7 @@ export function InviteBuddies({
 
   return (
     <div className="card" style={{ marginTop: 14 }}>
-      <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
+      <h3 className="card-section-title">Invite Buddies</h3>
       <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 14 }}>
         {ownerOnly
           ? "Private group — only you can invite buddies. They'll get a chat invite and have to accept it."

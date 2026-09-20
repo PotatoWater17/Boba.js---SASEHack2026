@@ -83,6 +83,7 @@ model Meeting {
   time       String
   meetDate   String    @default("")
   location   String
+  isOnline   Boolean   @default(false)
   university String    @default("")
   notes      String    @default("")
   maxSize    Int       @default(8)

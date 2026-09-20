@@ -1,21 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BrowseFilters } from "@/app/find/browse/browse-filters";
 import { JoinGroupButton } from "@/app/meetings/[id]/join-button";
 import { Avatar } from "@/avatar";
 import {
-  COURSES,
   formatMeetDate,
   getMe,
-  GROUP_KINDS,
   groupKindLabel,
   meetingMatchScore,
-  MEETUP_STYLES,
   PAGE_SIZE,
   prisma,
   splitList,
-  UNIVERSITIES,
 } from "@/lib";
 import { purgeOrphanMeetings } from "@/meeting-cleanup";
+import { MeetFormatBadge } from "@/meet-format-badge";
+import { parseMeetingFormatFilter } from "@/meeting-format";
 
 export default async function BrowseMeetupsPage({
   searchParams,
@@ -26,6 +25,7 @@ export default async function BrowseMeetupsPage({
     mine?: string;
     kind?: string;
     style?: string;
+    format?: string;
     uni?: string;
   }>;
 }) {
@@ -35,10 +35,12 @@ export default async function BrowseMeetupsPage({
 
   await purgeOrphanMeetings();
 
-  const { subject: subjectRaw, page: pageRaw, mine, kind, style, uni: uniRaw } = await searchParams;
+  const { subject: subjectRaw, page: pageRaw, mine, kind, style, format: formatRaw, uni: uniRaw } =
+    await searchParams;
   const subject = (subjectRaw || "").trim();
   const page = Math.max(1, Number(pageRaw) || 1);
   const onlyMine = mine === "1";
+  const format = parseMeetingFormatFilter(formatRaw);
   const myClasses = [...splitList(me.needHelp), ...splitList(me.canHelp)];
   const allSchools = uniRaw === "all" || uniRaw === "";
   const uniFilter = allSchools ? "" : (uniRaw || me.university || "").trim();
@@ -49,6 +51,8 @@ export default async function BrowseMeetupsPage({
       ...(subject ? { subject: { contains: subject } } : {}),
       ...(kind ? { groupKind: kind } : {}),
       ...(style ? { style } : {}),
+      ...(format === "online" ? { isOnline: true } : {}),
+      ...(format === "offline" ? { isOnline: false } : {}),
       ...(uniFilter ? { university: { contains: uniFilter } } : {}),
     },
     include: { members: { include: { user: true } } },
@@ -85,17 +89,20 @@ export default async function BrowseMeetupsPage({
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageRows = ranked.slice(start, start + PAGE_SIZE);
-  const filtersOn = Boolean(subject || onlyMine || kind || style || allSchools || (uniRaw && uniRaw !== me.university));
+  const filtersOn = Boolean(
+    subject || onlyMine || kind || style || format || uniRaw === "all" || Boolean(uniRaw?.trim()),
+  );
 
   function href(nextPage: number, extra?: { uni?: string }) {
     const params = new URLSearchParams();
     if (subject) params.set("subject", subject);
     if (kind) params.set("kind", kind);
     if (style) params.set("style", style);
+    if (format) params.set("format", format);
     if (onlyMine) params.set("mine", "1");
     const nextUni = extra?.uni ?? (allSchools ? "all" : uniFilter);
     if (nextUni === "all") params.set("uni", "all");
-    else if (nextUni && nextUni !== myUniversity) params.set("uni", nextUni);
+    else if (nextUni) params.set("uni", nextUni);
     if (nextPage > 1) params.set("page", String(nextPage));
     const q = params.toString();
     return q ? `/find/browse?${q}` : "/find/browse";
@@ -107,7 +114,7 @@ export default async function BrowseMeetupsPage({
         <Link href="/find" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
           ← Find Buddies
         </Link>
-        <h1 className="page-title">Browse Meetups</h1>
+        <h1 className="page-title">Browse Study Buddy Groups</h1>
         {myClasses.length ? (
           <p>
             Matching against: {myClasses.join(", ")}.{" "}
@@ -125,68 +132,18 @@ export default async function BrowseMeetupsPage({
         )}
       </header>
 
-      <form method="get" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 16px", alignItems: "center" }}>
-        <input
-          className="field"
-          name="uni"
-          list="uni-list"
-          defaultValue={allSchools ? "" : uniFilter}
-          placeholder="Search or type any school name"
-          style={{ width: 260, margin: 0 }}
-        />
-        <datalist id="uni-list">
-          {UNIVERSITIES.map((u) => (
-            <option key={u} value={u} />
-          ))}
-        </datalist>
-        <input
-          className="field"
-          name="subject"
-          list="browse-subject-list"
-          defaultValue={subject || ""}
-          placeholder="All subjects"
-          style={{ width: 200, margin: 0 }}
-          maxLength={80}
-        />
-        <datalist id="browse-subject-list">
-          {COURSES.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <select className="field" name="kind" defaultValue={kind || ""} style={{ width: "auto", margin: 0 }}>
-          <option value="">Any group size</option>
-          {GROUP_KINDS.map((k) => (
-            <option key={k.id} value={k.id}>
-              {k.label}
-            </option>
-          ))}
-        </select>
-        <select className="field" name="style" defaultValue={style || ""} style={{ width: "auto", margin: 0 }}>
-          <option value="">Any style</option>
-          {MEETUP_STYLES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 14 }}>
-          <input type="checkbox" name="mine" value="1" defaultChecked={onlyMine} />
-          Only my preferred classes
-        </label>
-        <button className="btn" type="submit">
-          Filter
-        </button>
-        {uniFilter ? (
-          <Link className="pill" href={href(1, { uni: "all" })}>
-            All schools
-          </Link>
-        ) : null}
-        {filtersOn ? (
-          <Link className="pill" href="/find/browse">
-            Clear
-          </Link>
-        ) : null}
-      </form>
+      <BrowseFilters
+        defaultUni={allSchools ? "" : uniFilter}
+        defaultSubject={subject}
+        defaultKind={kind || ""}
+        defaultStyle={style || ""}
+        defaultFormat={format}
+        defaultOnlyMine={onlyMine}
+        showAllSchoolsLink={Boolean(uniFilter)}
+        allSchoolsHref={href(1, { uni: "all" })}
+        showClear={filtersOn}
+        clearHref="/find/browse"
+      />
 
       <p style={{ fontSize: 14, color: "#666", marginTop: 0 }}>
         Showing {total === 0 ? 0 : start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total} groups
@@ -197,7 +154,7 @@ export default async function BrowseMeetupsPage({
       <div style={{ display: "grid", gap: 12 }}>
         {pageRows.length === 0 ? (
           <div className="card">
-            No groups match these filters yet. <Link href="/find/create">Create a meetup</Link>
+            No groups match these filters yet. <Link href="/find/create">Create a study buddy group</Link>
           </div>
         ) : (
           pageRows.map(({ meeting: m, score }) => {
@@ -217,6 +174,7 @@ export default async function BrowseMeetupsPage({
                       </span>
                     ) : null}
                     <div className="meet-badges">
+                      <MeetFormatBadge isOnline={m.isOnline} />
                       <span className={`badge kind-${m.groupKind || "small"}`}>
                         {groupKindLabel(m.groupKind || "small")}
                       </span>

@@ -16,7 +16,7 @@ Use this doc to restore demo profiles, friendships, DMs, and group chats after s
 npm run db:demo-full
 ```
 
-Runs `db:reset` (schema + seed), `db:ryan-friends` (Ryan’s buddy list + DMs), then `db:restore-accounts` (sync profiles from `prisma/accounts.snapshot.json`).
+Runs `db:reset` (schema + seed), `db:ryan-friends` (Ryan’s buddy list + DMs), `db:restore-accounts` (sync profiles from `prisma/accounts.snapshot.json`), and `db:backfill-online` (online/in-person tags on meetings).
 
 Optional — re-download profile photos (needs network):
 
@@ -30,6 +30,7 @@ npm run db:refresh-avatars
 npm run db:restore-team    # dev accounts + dev↔dev friendships
 npm run db:patch-demo      # universities, exam fields, dev meetups, dev DMs
 npm run db:ryan-friends    # Ryan’s ~18 buddies + Ryan DMs
+npm run db:backfill-online # set isOnline from location (after patch/meme scripts)
 npm run db:refresh-avatars # optional
 ```
 

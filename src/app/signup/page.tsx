@@ -26,7 +26,7 @@ export default async function SignupPage({
       title="Sign Up"
       footer={
         <p className="auth-switch">
-          Already have an account? <Link href="/login">Log in</Link>
+          Already have an account? <Link href="/login">Log In</Link>
         </p>
       }
     >
@@ -53,7 +53,7 @@ export default async function SignupPage({
           Must be 8+ characters and include uppercase, lowercase, a number, and a special character.
         </p>
         <label>
-          Confirm password
+          Confirm Password
           <input className="field" name="confirm" type="password" required minLength={8} />
         </label>
         <button className="btn auth-submit" type="submit">

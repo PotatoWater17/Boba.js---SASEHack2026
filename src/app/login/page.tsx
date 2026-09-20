@@ -20,15 +20,15 @@ export default async function LoginPage({
   if (error === "fill") msg = "Please fill out all fields.";
   if (notice === "signup") {
     ok = true;
-    msg = "Could not create an account with those details. Log in if you already have one, or try a different email.";
+    msg = "Could not create an account with those details. Log In if you already have one, or try a different email.";
   }
 
   return (
     <AuthPage
-      title="Login"
+      title="Log In"
       footer={
         <p className="auth-switch">
-          Don&apos;t have an account? <Link href="/signup">Sign up</Link>
+          Don&apos;t have an account? <Link href="/signup">Sign Up</Link>
         </p>
       }
     >
@@ -43,7 +43,7 @@ export default async function LoginPage({
           <input className="field" name="password" type="password" required />
         </label>
         <button className="btn auth-submit" type="submit">
-          Login
+          Log In
         </button>
         <p className="auth-link-row">
           <Link href="/forgot-password">Forgot password?</Link>

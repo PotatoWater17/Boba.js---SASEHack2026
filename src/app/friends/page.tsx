@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import { acceptFriend, removeFriend, unblockUser } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { blockedUserIds, getMe, prisma, timeAgo, usersBlockedByMe } from "@/lib";
+import { serverWeekAgoMs } from "@/server-time";
 import { PeopleSearch } from "./search";
 
 const FILTERS = [
   { id: "", label: "All" },
   { id: "unread", label: "Unread" },
   { id: "recent", label: "Recent" },
-  { id: "campus", label: "Same campus" },
-  { id: "new", label: "No chats yet" },
+  { id: "campus", label: "Same Campus" },
+  { id: "new", label: "No Chats Yet" },
   { id: "blocked", label: "Blocked" },
 ] as const;
 
@@ -49,17 +50,6 @@ export default async function FriendsPage({
   });
 
   const known = new Map(friends.map((f) => [f.id, f]));
-  const extraIds = [
-    ...new Set(
-      dms
-        .map((m) => (m.fromId === me.id ? m.toId : m.fromId))
-        .filter((id) => !known.has(id)),
-    ),
-  ];
-  if (extraIds.length) {
-    const extras = await prisma.user.findMany({ where: { id: { in: extraIds } } });
-    for (const u of extras) known.set(u.id, u);
-  }
 
   const blockedByMe = filter === "blocked" ? await usersBlockedByMe(me.id) : [];
   const blockedMatches = blockedByMe.filter((user) => {
@@ -67,7 +57,7 @@ export default async function FriendsPage({
     return `${user.firstName} ${user.lastName}`.toLowerCase().includes(q);
   });
 
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekAgo = serverWeekAgoMs();
   const threads = [...known.values()]
     .map((friend) => {
       const last = dms.find(
@@ -121,7 +111,7 @@ export default async function FriendsPage({
         <h1 className="page-title">My Buddies</h1>
       </header>
 
-      {error === "blocked" ? <p className="err">You can&apos;t message that user.</p> : null}
+      {error === "blocked" ? <p className="err">You can&apos;t message that buddy.</p> : null}
 
       <div className="chat-search">
         <form method="get" className="chat-search-form">
@@ -131,6 +121,7 @@ export default async function FriendsPage({
             defaultValue={qRaw || ""}
             placeholder="Search a name"
             style={{ margin: 0, flex: 1 }}
+            autoComplete="off"
           />
           {filter ? <input type="hidden" name="filter" value={filter} /> : null}
           <button className="btn" type="submit">
@@ -161,18 +152,18 @@ export default async function FriendsPage({
                   <span className="chat-row-preview"> wants to be buddies</span>
                 </span>
               </Link>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <div className="action-btns">
                 <form action={acceptFriend}>
                   <input type="hidden" name="userId" value={row.from.id} />
                   <input type="hidden" name="next" value="/friends" />
-                  <button type="submit" className="btn">
-                    Accept
+                  <button type="submit" className="btn action-btn">
+                    Accept Buddy
                   </button>
                 </form>
                 <form action={removeFriend}>
                   <input type="hidden" name="userId" value={row.from.id} />
                   <input type="hidden" name="next" value="/friends" />
-                  <button type="submit" className="pill">
+                  <button type="submit" className="btn-ghost action-btn">
                     Decline
                   </button>
                 </form>
@@ -219,7 +210,7 @@ export default async function FriendsPage({
         )
       ) : known.size === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
-          No buddies yet. <Link href="/find/buddies">Match a buddy</Link> or add someone from a meetup.
+          No buddies yet. <Link href="/find/buddies">Find a Buddy!</Link>
         </div>
       ) : threads.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
@@ -241,7 +232,7 @@ export default async function FriendsPage({
               <Link
                 key={friend.id}
                 href={`/friends/${friend.id}`}
-                className={`chat-row${unread ? " unread" : ""}`}
+                className={`chat-row hover-lift${unread ? " unread" : ""}`}
               >
                 <Avatar user={friend} />
                 <span className="chat-row-text">

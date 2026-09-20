@@ -25,7 +25,7 @@ export function DeleteUserButton({
         description={`Remove ${name} and all their data (profile, messages, groups they host, friendships). This cannot be undone.`}
       >
         <div className="modal-actions">
-          <button type="button" className="pill" onClick={() => setOpen(false)}>
+          <button type="button" className="btn-ghost action-btn" onClick={() => setOpen(false)}>
             Cancel
           </button>
           <form action={deleteUser}>

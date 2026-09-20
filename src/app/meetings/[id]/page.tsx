@@ -9,8 +9,12 @@ import { ChatReactions } from "@/chat-reactions";
 import { CopyMessageButton } from "@/copy-message-btn";
 import { messageCopyText } from "@/message-copy";
 import { formatMeetDate, getMe, groupKindLabel, prisma, splitList } from "@/lib";
+import { MeetFormatBadge } from "@/meet-format-badge";
+import { meetingFormatLabel } from "@/meeting-format";
 import { packReactions } from "@/reactions";
 import { GroupSeenOnOpen } from "./seen";
+import { ChatDropZone } from "@/chat-drop";
+import { DmThread } from "@/app/friends/[id]/thread";
 import { GroupChatCompose } from "./compose";
 import { InviteBuddies } from "./invite";
 import { JoinGroupButton } from "./join-button";
@@ -40,6 +44,7 @@ export default async function MeetingPage({
 
   const joined = meeting.members.some((m) => m.userId === me.id);
   const isOwner = meeting.hostId === me.id;
+  if (meeting.isPrivate && !joined && !isOwner) redirect("/groups");
   const canViewMembers = joined || !meeting.isPrivate;
 
   const joinRequest =
@@ -109,7 +114,7 @@ export default async function MeetingPage({
           <Link href={`/meetings/${meeting.id}`} className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
             ← Back
           </Link>
-          <h1 className="page-title">Edit Meetup</h1>
+          <h1 className="page-title">Edit Study Buddy Group</h1>
           <p>Update the details for your study session.</p>
         </header>
         <CreateMeetupForm
@@ -121,6 +126,7 @@ export default async function MeetingPage({
             meetDate: meeting.meetDate,
             time: meeting.time,
             location: meeting.location,
+            isOnline: meeting.isOnline,
             university: meeting.university,
             notes: meeting.notes,
             groupKind: meeting.groupKind,
@@ -145,16 +151,16 @@ export default async function MeetingPage({
       {notice === "requested" ? <p className="ok">Join request sent — the owner will review it.</p> : null}
       {notice === "pending" ? <p className="ok">Your join request is already pending.</p> : null}
       {notice === "member-removed" ? (
-        <p className="ok">Member removed — their messages now show as &quot;Removed user&quot;.</p>
+        <p className="ok">Buddy removed — their messages now show as &quot;Removed buddy&quot;.</p>
       ) : null}
 
       <header className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>
-          Meetup Info
+          Study Buddy Group
         </h1>
         {isOwner ? (
-          <Link href={`/meetings/${meeting.id}?edit=1`} className="btn" title="Edit meetup">
-            Edit details
+          <Link href={`/meetings/${meeting.id}?edit=1`} className="btn" title="Edit study buddy group">
+            Edit Details
           </Link>
         ) : null}
       </header>
@@ -163,7 +169,7 @@ export default async function MeetingPage({
           <Link href={`/profile/${meeting.host.id}`} className="meet-owner-link">
             <Avatar user={meeting.host} style={{ width: 36, height: 36, fontSize: 12 }} />
             <span>
-              <span className="meet-owner-label">Meetup owner</span>
+              <span className="meet-owner-label">Group Owner</span>
               <b>
                 {meeting.host.firstName} {meeting.host.lastName}
                 {isOwner ? " (you)" : ""}
@@ -172,6 +178,7 @@ export default async function MeetingPage({
           </Link>
         </div>
         <div className="meet-badges" style={{ marginBottom: 10 }}>
+          <MeetFormatBadge isOnline={meeting.isOnline} />
           {meeting.isPrivate ? <span className="badge private">Private</span> : null}
           {meeting.requireApproval && !meeting.isPrivate ? (
             <span className="badge approval">Approval required</span>
@@ -190,19 +197,22 @@ export default async function MeetingPage({
           <b>Meeting time:</b> {meeting.time}
         </p>
         <p>
-          <b>Location:</b> {meeting.location}
+          <b>{meeting.isOnline ? "Meeting link / platform" : "Location"}:</b> {meeting.location}
         </p>
         <p>
-          <b>Group type:</b> {groupKindLabel(meeting.groupKind)}
+          <b>Format:</b> {meetingFormatLabel(meeting.isOnline)}
         </p>
         <p>
-          <b>Meetup style:</b> {meeting.style}
+          <b>Group Type:</b> {groupKindLabel(meeting.groupKind)}
+        </p>
+        <p>
+          <b>Study Style:</b> {meeting.style}
         </p>
         <p>
           <b>Group Size:</b> {meeting.members.length} / {meeting.maxSize}
         </p>
         <p style={{ marginBottom: 6 }}>
-          <b>Topics covering:</b>
+          <b>Topics Covering:</b>
         </p>
         <div>
           {topics.map((t) => (
@@ -213,7 +223,7 @@ export default async function MeetingPage({
         </div>
         {meeting.notes ? (
           <p style={{ marginTop: 14 }}>
-            <b>Notes / additional info:</b>
+            <b>Notes:</b>
             <br />
             <span style={{ color: "var(--ink)" }}>{meeting.notes}</span>
           </p>
@@ -257,7 +267,8 @@ export default async function MeetingPage({
         />
       ) : null}
 
-      <h2>Group Buddies</h2>
+      <section className="page-section">
+        <h2 className="page-section-title">Group Buddies</h2>
       {canViewMembers ? (
         <div className="card meet-people-grid">
           {meeting.members.map((mem) => (
@@ -288,14 +299,16 @@ export default async function MeetingPage({
           </p>
         </div>
       )}
+      </section>
 
       {joined ? (
-        <>
-          <h2>Group Chat</h2>
-          <div className="card">
-            <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minHeight: 160, marginBottom: 12 }}>
+        <section className="page-section">
+          <h2 className="page-section-title">Group Chat</h2>
+          <ChatDropZone className="chat-drop-zone-group">
+            <div className="card chat-panel-card">
+              <DmThread messageCount={messages.length}>
               {messages.length === 0 ? (
-                <p className="text-muted">No messages yet.</p>
+                <p className="text-muted" style={{ margin: 0 }}>No messages yet.</p>
               ) : (
                 messages.map((msg) => {
                   const removed = msg.authorRemoved;
@@ -317,7 +330,7 @@ export default async function MeetingPage({
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                        <b style={{ fontSize: 13 }}>{removed ? "Removed user" : `${msg.user.firstName}:`}</b>
+                        <b style={{ fontSize: 13 }}>{removed ? "Removed buddy" : `${msg.user.firstName}:`}</b>
                         {!msg.unsent && !removed && (copyText || msg.userId === me.id) ? (
                           <div className="dm-bubble-actions">
                             {copyText ? <CopyMessageButton text={copyText} /> : null}
@@ -336,7 +349,7 @@ export default async function MeetingPage({
                       {msg.unsent ? (
                         <div className="msg-unsent">Unsent</div>
                       ) : removed ? (
-                        <div className="msg-removed-user">Removed user</div>
+                        <div className="msg-removed-user">Removed buddy</div>
                       ) : (
                         <>
                           {msg.text ? <div className="dm-text">{msg.text}</div> : null}
@@ -362,13 +375,14 @@ export default async function MeetingPage({
                   );
                 })
               )}
-            </div>
+              </DmThread>
             {error === "empty" ? <p className="err">Add a message or attachment.</p> : null}
             {error === "type" ? <p className="err">That file type isn&apos;t supported.</p> : null}
             {error === "size" ? <p className="err">File must be 8 MB or smaller.</p> : null}
-            <GroupChatCompose meetingId={meeting.id} />
-          </div>
-        </>
+            <GroupChatCompose key={messages.length} meetingId={meeting.id} />
+            </div>
+          </ChatDropZone>
+        </section>
       ) : null}
     </div>
   );

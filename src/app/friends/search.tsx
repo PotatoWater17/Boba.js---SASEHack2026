@@ -74,21 +74,21 @@ export function PeopleSearch() {
                     </Link>
                   ) : null}
                   {u.status === "friends" ? null : u.status === "sent" ? (
-                    <span className="pill">Sent</span>
+                    <span className="action-status">Sent</span>
                   ) : u.status === "incoming" ? (
                     <form action={acceptFriend}>
                       <input type="hidden" name="userId" value={u.id} />
                       <input type="hidden" name="next" value="/friends" />
-                      <button className="btn" type="submit">
-                        Accept
+                      <button className="btn action-btn" type="submit">
+                        Accept Buddy
                       </button>
                     </form>
                   ) : (
                     <form action={addFriend}>
                       <input type="hidden" name="userId" value={u.id} />
                       <input type="hidden" name="next" value="/friends" />
-                      <button className="btn" type="submit">
-                        Add buddy
+                      <button className="btn action-btn" type="submit">
+                        Add Buddy
                       </button>
                     </form>
                   )}

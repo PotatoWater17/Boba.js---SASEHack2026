@@ -72,7 +72,10 @@ export function MessageToasts() {
   const latest = useRef<Record<string, string>>({});
   const timers = useRef<Record<string, { fade: number; kill: number }>>({});
   const pathRef = useRef(pathname);
-  pathRef.current = pathname;
+
+  useEffect(() => {
+    pathRef.current = pathname;
+  }, [pathname]);
 
   function clearTimers(key: string) {
     const t = timers.current[key];

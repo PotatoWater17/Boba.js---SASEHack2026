@@ -78,7 +78,7 @@ export function DashCalendar({
                 onClick={() => setOpen(dateStr)}
                 aria-label={
                   count
-                    ? `${prettyDate(dateStr)}, ${count} meetup${count === 1 ? "" : "s"}`
+                    ? `${prettyDate(dateStr)}, ${count} buddy group${count === 1 ? "" : "s"}`
                     : prettyDate(dateStr)
                 }
               >
@@ -97,11 +97,11 @@ export function DashCalendar({
         titleId="cal-pop-title"
       >
         {picked.length === 0 ? (
-          <p className="text-muted">No meetups this day.</p>
+          <p className="text-muted">No study buddy groups this day.</p>
         ) : (
           <div className="dash-meet-list" style={{ margin: "0 0 16px" }}>
             {picked.map((m) => (
-              <Link key={m.id} href={`/meetings/${m.id}`} className="dash-meet">
+              <Link key={m.id} href={`/meetings/${m.id}`} className="dash-meet hover-lift">
                 <div className="dash-meet-main">
                   <b>
                     {m.subject}

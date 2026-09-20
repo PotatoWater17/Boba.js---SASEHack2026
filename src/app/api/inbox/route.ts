@@ -142,7 +142,7 @@ export async function GET() {
         msgId: msg.id,
         subject: msg.meeting.subject,
         fromId: msg.user.id,
-        firstName: msg.authorRemoved ? "Removed user" : msg.user.firstName,
+        firstName: msg.authorRemoved ? "Removed buddy" : msg.user.firstName,
         lastName: msg.authorRemoved ? "" : msg.user.lastName,
         photoKey: msg.authorRemoved ? "" : msg.user.photoKey,
         preview: groupMessagePreview(msg),

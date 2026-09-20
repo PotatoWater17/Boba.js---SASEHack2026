@@ -30,7 +30,7 @@ export function JoinGroupButton({
     <form action={joinMeeting}>
       <input type="hidden" name="meetingId" value={meetingId} />
       <button className="btn" type="submit">
-        {requireApproval ? "Request to join" : "Join group"}
+        {requireApproval ? "Request to Join" : "Join Group"}
       </button>
     </form>
   );

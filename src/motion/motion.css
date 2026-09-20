@@ -88,3 +88,40 @@
     animation: none;
   }
 }
+
+/* Hover lift — interactive rows & cards */
+.hover-lift {
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .hover-lift {
+    transition:
+      transform 0.22s var(--motion-ease),
+      box-shadow 0.22s var(--motion-ease),
+      border-color 0.22s ease;
+  }
+
+  a.hover-lift:hover,
+  .card.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(88, 28, 135, 0.1);
+    border-color: color-mix(in srgb, var(--purple) 30%, var(--line));
+  }
+
+  a.chat-row.hover-lift:hover.unread {
+    border-color: color-mix(in srgb, var(--purple) 45%, var(--bubble-mine-line));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift {
+    transition: none;
+  }
+
+  a.hover-lift:hover,
+  .card.hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}

@@ -213,10 +213,10 @@ export function PhotoCropper({
           />
         </label>
         <div className="photo-crop-actions">
-          <button type="button" className="pill" onClick={onCancel} disabled={busy}>
+          <button type="button" className="btn-ghost action-btn" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
-          <button type="button" className="btn" onClick={apply} disabled={!ready || busy}>
+          <button type="button" className="btn action-btn" onClick={apply} disabled={!ready || busy}>
             {busy ? "Saving…" : "Use photo"}
           </button>
         </div>

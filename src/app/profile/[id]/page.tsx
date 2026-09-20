@@ -84,11 +84,11 @@ export default async function ProfilePage({
           {pw === "changed" ? <p className="ok">Password updated.</p> : null}
           <PhotoField src={photoSrc(user)} fallback={initials(user.firstName, user.lastName)} />
           <label>
-            First name
+            First Name
             <input className="field" name="firstName" defaultValue={user.firstName} required />
           </label>
           <label>
-            Last name
+            Last Name
             <input className="field" name="lastName" defaultValue={user.lastName} required />
           </label>
           <label>
@@ -109,8 +109,8 @@ export default async function ProfilePage({
               placeholder="A little about you — how you like to study, what you're grinding on."
             />
           </label>
-          <ClassBubbles label="Classes Need help in" name="needHelp" initial={need} />
-          <ClassBubbles label="Classes Could help in" name="canHelp" initial={help} />
+          <ClassBubbles label="Classes I Need Help With" name="needHelp" initial={need} />
+          <ClassBubbles label="Classes I Can Help With" name="canHelp" initial={help} />
           <ExamPrepFields
             defaultCourse={user.examCourse}
             defaultDate={user.examDate}
@@ -136,7 +136,7 @@ export default async function ProfilePage({
         </form>
 
         <div className="box profile-password-box">
-          <h2 className="profile-password-title">Change password</h2>
+          <h2 className="profile-password-title">Change Password</h2>
           <form action={changePassword}>
             <label>
               Current password
@@ -218,27 +218,27 @@ export default async function ProfilePage({
         ) : null}
       </dl>
 
-      {!isMe && blockedNotice === "1" ? <p className="ok">User blocked.</p> : null}
+      {!isMe && blockedNotice === "1" ? <p className="ok">Buddy blocked.</p> : null}
       {!isMe && reconnect === "1" ? (
         <p className="err">You&apos;re not buddies anymore. Add them again to open your chat.</p>
       ) : null}
-      {!isMe && error === "blocked" ? <p className="err">You can&apos;t interact with this user.</p> : null}
+      {!isMe && error === "blocked" ? <p className="err">You can&apos;t interact with this buddy.</p> : null}
 
       {!isMe ? (
         <div className="profile-actions">
           {iBlocked ? (
             <>
-              <span className="pill active profile-action-btn">Blocked</span>
+              <span className="action-status active profile-action-btn">Blocked</span>
               <form action={unblockUser} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="pill profile-action-btn">
+                <button type="submit" className="btn-ghost profile-action-btn">
                   Unblock
                 </button>
               </form>
             </>
           ) : blocked ? (
             <p className="err" style={{ margin: 0 }}>
-              You can&apos;t interact with this user.
+              You can&apos;t interact with this buddy.
             </p>
           ) : (
             <>
@@ -253,8 +253,8 @@ export default async function ProfilePage({
                   />
                   <form action={removeFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
-                    <button type="submit" className="pill profile-action-btn">
-                      Remove buddy
+                    <button type="submit" className="btn-ghost profile-action-btn">
+                      Remove Buddy
                     </button>
                   </form>
                 </>
@@ -263,22 +263,22 @@ export default async function ProfilePage({
                   <form action={acceptFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
                     <button type="submit" className="btn profile-action-btn">
-                      Accept buddy
+                      Accept Buddy
                     </button>
                   </form>
                   <form action={removeFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
-                    <button type="submit" className="pill profile-action-btn">
+                    <button type="submit" className="btn-ghost profile-action-btn">
                       Decline
                     </button>
                   </form>
                 </>
               ) : iSent ? (
                 <>
-                  <span className="pill profile-action-btn">Request sent</span>
+                  <span className="action-status profile-action-btn">Request Sent</span>
                   <form action={removeFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
-                    <button type="submit" className="pill profile-action-btn">
+                    <button type="submit" className="btn-ghost profile-action-btn">
                       Cancel
                     </button>
                   </form>
@@ -287,13 +287,13 @@ export default async function ProfilePage({
                 <form action={addFriend} className="profile-action-form">
                   <input type="hidden" name="userId" value={user.id} />
                   <button type="submit" className="btn profile-action-btn">
-                    Add buddy
+                    Add Buddy
                   </button>
                 </form>
               )}
               <form action={blockUser} className="profile-action-form">
                 <input type="hidden" name="userId" value={user.id} />
-                <button type="submit" className="pill profile-action-btn">
+                <button type="submit" className="btn-ghost profile-action-btn">
                   Block
                 </button>
               </form>
@@ -304,24 +304,24 @@ export default async function ProfilePage({
 
       <div className="profile-bits">
         <section>
-          <h3>Bio</h3>
+          <h3 className="card-section-title">Bio</h3>
           <p className={user.bio ? undefined : "text-muted"} style={{ color: user.bio ? "var(--ink)" : undefined }}>{user.bio || "No bio yet."}</p>
         </section>
         <section>
-          <h3>Classes Need help in</h3>
+          <h3 className="card-section-title">Classes I Need Help With</h3>
           <div className="profile-bubbles">
             {need.length ? need.map((c) => <span key={c} className="bubble">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
         <section>
-          <h3>Classes Could help in</h3>
+          <h3 className="card-section-title">Classes I Can Help With</h3>
           <div className="profile-bubbles">
             {help.length ? help.map((c) => <span key={c} className="bubble bubble-help">{c}</span>) : <span className="text-muted">None listed</span>}
           </div>
         </section>
         {user.examCourse || user.examDate || examTopics.length || user.studyStyle ? (
           <section>
-            <h3>Exam prep</h3>
+            <h3 className="card-section-title">Exam Prep</h3>
             {user.examCourse ? (
               <p style={{ margin: "0 0 6px" }}>
                 <b>Subject:</b> {user.examCourse}

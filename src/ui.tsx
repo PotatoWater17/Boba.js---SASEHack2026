@@ -19,6 +19,7 @@ import {
   type GroupKindId,
 } from "@/courses";
 import { MAJORS } from "@/majors";
+import { inferMeetingOnline } from "@/meeting-format";
 import { searchUniversities, UNIVERSITIES } from "@/universities";
 import { isYearOption, YEAR_OPTIONS } from "@/years";
 
@@ -204,7 +205,7 @@ export function ExamPrepFields({
 
   return (
     <div className="exam-prep-fields">
-      <p className="exam-prep-lead">Upcoming exam prep (optional — improves buddy matches)</p>
+      <p className="exam-prep-lead">Upcoming Exam Prep (optional — improves buddy matches)</p>
       <div style={{ marginBottom: 12 }}>
         <div style={{ marginBottom: 6 }}>Subject</div>
         {course ? (
@@ -771,28 +772,59 @@ export function SubjectTopicFields({
   );
 }
 
-export function LocationField({ defaultValue = "" }: { defaultValue?: string }) {
+export function LocationField({
+  defaultValue = "",
+  defaultOnline,
+}: {
+  defaultValue?: string;
+  defaultOnline?: boolean;
+}) {
   const [value, setValue] = useState(defaultValue);
+  const [isOnline, setIsOnline] = useState(defaultOnline ?? inferMeetingOnline(defaultValue));
 
   return (
-    <label>
-      Location
-      <input
-        className="field"
-        name="location"
-        list="location-ideas"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Student Center, Library, Zoom…"
-        required
-        maxLength={120}
-      />
-      <datalist id="location-ideas">
-        {LOCATIONS.map((loc) => (
-          <option key={loc} value={loc} />
-        ))}
-      </datalist>
-    </label>
+    <div className="location-field">
+      <div className="filter-field-label">Meeting format</div>
+      <div className="format-toggle" role="group" aria-label="Meeting format">
+        <button
+          type="button"
+          className={`format-toggle-btn${!isOnline ? " active" : ""}`}
+          aria-pressed={!isOnline}
+          onClick={() => setIsOnline(false)}
+        >
+          In person
+        </button>
+        <button
+          type="button"
+          className={`format-toggle-btn${isOnline ? " active" : ""}`}
+          aria-pressed={isOnline}
+          onClick={() => setIsOnline(true)}
+        >
+          Online
+        </button>
+      </div>
+      <input type="hidden" name="isOnline" value={isOnline ? "1" : "0"} />
+      <label>
+        {isOnline ? "Meeting link or platform" : "Location"}
+        <input
+          className="field"
+          name="location"
+          list={isOnline ? undefined : "location-ideas"}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={isOnline ? "Zoom, Teams, Discord, Google Meet…" : "Student Center, Library, CS lab…"}
+          required
+          maxLength={120}
+        />
+        {!isOnline ? (
+          <datalist id="location-ideas">
+            {LOCATIONS.filter((loc) => !inferMeetingOnline(loc)).map((loc) => (
+              <option key={loc} value={loc} />
+            ))}
+          </datalist>
+        ) : null}
+      </label>
+    </div>
   );
 }
 
@@ -808,6 +840,7 @@ export function CreateMeetupForm({
     meetDate: string;
     time: string;
     location: string;
+    isOnline?: boolean;
     university: string;
     notes: string;
     groupKind: string;
@@ -884,7 +917,10 @@ export function CreateMeetupForm({
           onChange={(e) => setTime(e.target.value)}
         />
       </label>
-      <LocationField defaultValue={meeting?.location || ""} />
+      <LocationField
+        defaultValue={meeting?.location || ""}
+        defaultOnline={meeting?.isOnline ?? inferMeetingOnline(meeting?.location || "")}
+      />
       <label>
         Group size category
         <select
@@ -905,7 +941,7 @@ export function CreateMeetupForm({
         <input type="hidden" name="maxSize" value="2" />
       ) : (
         <label>
-          Max people ({minSize}–{kind.max})
+          Max Buddies ({minSize}–{kind.max})
           <input
             className="field"
             name="maxSize"
@@ -920,7 +956,7 @@ export function CreateMeetupForm({
         </label>
       )}
       <label>
-        Meetup style
+        Study Style
         <select
           className="field"
           name="style"
@@ -936,7 +972,7 @@ export function CreateMeetupForm({
         </select>
       </label>
       <label>
-        Notes / additional info (optional)
+        Notes (Optional)
         <textarea
           className="field"
           name="notes"
@@ -948,7 +984,7 @@ export function CreateMeetupForm({
         />
       </label>
       <fieldset className="meet-privacy-fieldset">
-        <legend>Privacy &amp; access</legend>
+        <legend>Privacy &amp; Access</legend>
         <label className="meet-privacy-option">
           <input
             type="checkbox"
@@ -977,7 +1013,7 @@ export function CreateMeetupForm({
         ) : null}
       </fieldset>
       <button className="btn" type="submit" disabled={pending}>
-        {pending ? (editing ? "Saving…" : "Posting…") : editing ? "Save changes" : "Post meetup"}
+        {pending ? (editing ? "Saving…" : "Posting…") : editing ? "Save Changes" : "Post Group"}
       </button>
     </form>
   );
@@ -995,7 +1031,7 @@ export function LeaveGroupButton({
   return (
     <>
       <button type="button" className="pill" onClick={() => setOpen(true)}>
-        {soloOwner ? "Leave & delete group" : "Leave group"}
+        {soloOwner ? "Leave & Delete Group" : "Leave Group"}
       </button>
 
       <Modal
@@ -1005,7 +1041,7 @@ export function LeaveGroupButton({
         description={
           soloOwner
             ? "You're the only member — leaving will permanently delete this study group."
-            : "You'll be removed from the meetup and won't see the group chat unless you join again."
+            : "You'll be removed from this study buddy group and won't see group chat unless you join again."
         }
         titleId="leave-title"
       >
@@ -1016,7 +1052,7 @@ export function LeaveGroupButton({
           <form action={leaveMeeting}>
             <input type="hidden" name="meetingId" value={meetingId} />
             <button type="submit" className="btn">
-              Confirm leave
+              Confirm Leave
             </button>
           </form>
         </div>
@@ -1046,7 +1082,7 @@ export function RemoveMemberButton({
         open={open}
         onClose={() => setOpen(false)}
         title={`Remove ${name} from group?`}
-        description={`They'll lose access to this group. Their past messages will show as "Removed user".`}
+        description={`They'll lose access to this group. Their past messages will show as "Removed buddy".`}
         titleId="remove-member-title"
       >
         <div className="modal-actions">
@@ -1057,7 +1093,7 @@ export function RemoveMemberButton({
             <input type="hidden" name="meetingId" value={meetingId} />
             <input type="hidden" name="userId" value={userId} />
             <button type="submit" className="btn">
-              Remove buddy
+              Remove Buddy
             </button>
           </form>
         </div>
@@ -1072,13 +1108,13 @@ export function DeleteGroupButton({ meetingId, subject }: { meetingId: string; s
   return (
     <>
       <button type="button" className="pill" onClick={() => setOpen(true)}>
-        Delete group
+        Delete Group
       </button>
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Delete this study group?"
+        title="Delete This Study Buddy Group?"
         description={`Permanently remove ${subject}, its chat history, and all member access. This cannot be undone.`}
         titleId="delete-group-title"
       >
@@ -1089,7 +1125,7 @@ export function DeleteGroupButton({ meetingId, subject }: { meetingId: string; s
           <form action={deleteMeeting}>
             <input type="hidden" name="meetingId" value={meetingId} />
             <button type="submit" className="btn">
-              Delete group
+              Delete Group
             </button>
           </form>
         </div>

@@ -1,18 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, addFriend } from "@/app/actions";
+import { buddyMatchLabel } from "@/buddy-match-display";
+import { MatchReasons } from "./match-reasons";
 import { MatchNotify } from "./notify";
 import { ExamPrepFields, MajorPicker, UniversityPicker } from "@/ui";
 import { Avatar } from "@/avatar";
+import { meetingFormatLabel } from "@/meeting-format";
 import {
   blockedUserIds,
   buddyMatch,
-  examMeetupScore,
   formatMeetDate,
   getMe,
   groupKindLabel,
   prisma,
   splitList,
+  studyGroupMatchScore,
 } from "@/lib";
 
 export default async function FindBuddiesPage({
@@ -80,16 +83,19 @@ export default async function FindBuddiesPage({
     : [];
 
   const userIds = visiblePeople.map((u) => u.id);
-  const meetupsByUser = new Map<string, { subject: string; topic: string; meetDate: string; style: string }[]>();
+  const meetupsByUser = new Map<
+    string,
+    { subject: string; topic: string; meetDate: string; style: string; university: string }[]
+  >();
   if (submitted && userIds.length) {
     const hosted = await prisma.meeting.findMany({
       where: { hostId: { in: userIds }, isPrivate: false },
-      select: { hostId: true, subject: true, topic: true, meetDate: true, style: true },
+      select: { hostId: true, subject: true, topic: true, meetDate: true, style: true, university: true },
     });
     const joined = await prisma.member.findMany({
       where: { userId: { in: userIds }, meeting: { isPrivate: false } },
       include: {
-        meeting: { select: { subject: true, topic: true, meetDate: true, style: true } },
+        meeting: { select: { subject: true, topic: true, meetDate: true, style: true, university: true } },
       },
     });
     for (const m of hosted) {
@@ -113,13 +119,21 @@ export default async function FindBuddiesPage({
       return { user, score, reasons, bond };
     })
     .filter((row) => row.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.reasons.length !== a.reasons.length) return b.reasons.length - a.reasons.length;
+      return `${a.user.firstName} ${a.user.lastName}`.localeCompare(`${b.user.firstName} ${b.user.lastName}`);
+    });
 
   const pick = ranked[0];
-  const examBits = [
+  const topScore = pick?.score || 0;
+  const searchBits = [
     prefs.examCourse ? prefs.examCourse : "",
     prefs.examDate ? formatMeetDate(prefs.examDate) : "",
     prefs.studyStyle ? prefs.studyStyle : "",
+    prefs.university ? prefs.university : "",
+    prefs.major ? prefs.major : "",
+    prefs.year ? prefs.year : "",
   ].filter(Boolean);
 
   let matchingGroups: {
@@ -129,6 +143,7 @@ export default async function FindBuddiesPage({
     meetDate: string;
     time: string;
     location: string;
+    isOnline: boolean;
     style: string;
     groupKind: string;
     members: { length: number };
@@ -136,7 +151,7 @@ export default async function FindBuddiesPage({
     score: number;
   }[] = [];
 
-  if (submitted && (prefs.examCourse || prefs.examTopics || prefs.studyStyle)) {
+  if (submitted) {
     const publicMeetings = await prisma.meeting.findMany({
       where: { isPrivate: false },
       include: { _count: { select: { members: true } } },
@@ -149,11 +164,13 @@ export default async function FindBuddiesPage({
         meetDate: m.meetDate,
         time: m.time,
         location: m.location,
+        isOnline: m.isOnline,
         style: m.style,
         groupKind: m.groupKind,
+        university: m.university,
         members: { length: m._count.members },
         maxSize: m.maxSize,
-        score: examMeetupScore(prefs, m),
+        score: studyGroupMatchScore(prefs, m),
       }))
       .filter((row) => row.score > 0)
       .sort((a, b) => b.score - a.score)
@@ -174,18 +191,11 @@ export default async function FindBuddiesPage({
       </header>
 
       {submitted && pick ? (
-        <MatchNotify
-          name={`${pick.user.firstName} ${pick.user.lastName}`}
-          detail={
-            pick.reasons.length
-              ? `Matched for exam prep — ${pick.reasons.slice(0, 4).join(", ")}.`
-              : ""
-          }
-        />
+        <MatchNotify name={`${pick.user.firstName} ${pick.user.lastName}`} reasons={pick.reasons} />
       ) : null}
 
       <form method="get" className="box" style={{ marginBottom: 28 }}>
-        <h3 className="form-section-title">Exam prep</h3>
+        <h3 className="form-section-title">Exam Prep</h3>
         <ExamPrepFields
           defaultCourse={prefs.examCourse}
           defaultDate={prefs.examDate}
@@ -195,7 +205,7 @@ export default async function FindBuddiesPage({
           defaultYear={prefs.year}
         />
 
-        <h3 className="form-section-title">Campus &amp; major</h3>
+        <h3 className="form-section-title">Campus &amp; Major</h3>
         <UniversityPicker defaultValue={prefs.university} required={false} />
         <MajorPicker defaultValue={prefs.major} required={false} />
 
@@ -204,7 +214,7 @@ export default async function FindBuddiesPage({
             <>
               Matching also uses classes you can help with from your profile:{" "}
               <strong>{profileCanHelp.join(", ")}</strong>.{" "}
-              <Link href={`/profile/${me.id}?edit=1`}>Edit profile</Link>
+              <Link href={`/profile/${me.id}?edit=1`}>Edit Profile</Link>
             </>
           ) : (
             <>
@@ -220,18 +230,19 @@ export default async function FindBuddiesPage({
         </button>
       </form>
 
-      {submitted && examBits.length ? (
+      {submitted && searchBits.length ? (
         <p className="text-muted" style={{ marginTop: -16, marginBottom: 20, fontSize: 14 }}>
-          Searching for: {examBits.join(" · ")}
+          Searching for: {searchBits.join(" · ")}
           {splitList(prefs.examTopics).length ? ` · ${splitList(prefs.examTopics).join(", ")}` : ""}
+          {ranked.length ? ` · ${ranked.length} ranked match${ranked.length === 1 ? "" : "es"}` : ""}
         </p>
       ) : null}
 
       {submitted && matchingGroups.length ? (
-        <section style={{ marginBottom: 28 }}>
-          <h2 className="section-title">Study groups for your exam</h2>
+        <section className="page-section">
+          <h2 className="section-title">Study Buddy Groups for Your Exam</h2>
           <p className="text-muted" style={{ marginTop: -8, marginBottom: 12, fontSize: 14 }}>
-            Public groups matching your subject, topics, or study style.
+            Public study buddy groups matching your subject, topics, or study style.
           </p>
           <div className="found-list">
             {matchingGroups.map((g, i) => {
@@ -239,7 +250,7 @@ export default async function FindBuddiesPage({
               return (
                 <div
                   key={g.id}
-                  className="card found-mini motion-stagger-item"
+                  className="card found-mini hover-lift motion-stagger-item"
                   style={{ ["--motion-delay" as string]: `${i * 40}ms` }}
                 >
                   <Link href={`/meetings/${g.id}`} className="found-mini-main">
@@ -253,11 +264,12 @@ export default async function FindBuddiesPage({
                         {[formatMeetDate(g.meetDate), g.time, g.location].filter(Boolean).join(" · ")}
                       </span>
                       <span className="found-mini-meta">
-                        {groupKindLabel(g.groupKind)} · {g.style} · {g.members.length}/{g.maxSize}
+                        {meetingFormatLabel(g.isOnline)} · {groupKindLabel(g.groupKind)} · {g.style} ·{" "}
+                        {g.members.length}/{g.maxSize}
                       </span>
                     </span>
                   </Link>
-                  <Link className="btn found-mini-action" href={`/meetings/${g.id}`}>
+                  <Link className="btn action-btn found-mini-action" href={`/meetings/${g.id}`}>
                     View
                   </Link>
                 </div>
@@ -271,66 +283,71 @@ export default async function FindBuddiesPage({
         !pick ? (
           <div className="card">
             Nobody lined up with those preferences yet. Try widening your subject or campus, add exam topics, or{" "}
-            <Link href="/find/browse">browse exam review meetups</Link>.
+            <Link href="/find/browse">browse study buddy groups</Link>.
           </div>
         ) : (
-          <section>
-            <h2 className="section-title">Buddy matches</h2>
+          <section className="page-section">
+            <h2 className="section-title">Buddy Matches</h2>
             <div className="found-list">
-              {ranked.slice(0, 12).map(({ user, reasons, bond }, i) => {
+              {ranked.slice(0, 12).map(({ user, score, reasons, bond }, i) => {
                 const bits = [user.year, user.major, user.university].filter(Boolean);
                 const examMeta = [
                   user.examCourse ? `${user.examCourse} exam` : "",
                   user.examDate ? formatMeetDate(user.examDate) : "",
                 ].filter(Boolean);
                 const canHelp = splitList(user.canHelp);
+                const matchLabel = buddyMatchLabel(score, i, topScore);
+                const matchPct = topScore > 0 ? Math.round((score / topScore) * 100) : 100;
                 return (
                   <div
                     key={user.id}
-                    className="card found-mini motion-stagger-item"
-                    style={{ justifyContent: "space-between", ["--motion-delay" as string]: `${i * 45}ms` }}
+                    className="card found-mini found-mini-match-card hover-lift motion-stagger-item"
+                    style={{ ["--motion-delay" as string]: `${i * 45}ms` }}
                   >
-                    <Link href={`/profile/${user.id}`} className="found-mini-main">
-                      <Avatar user={user} />
-                      <span className="found-mini-text">
-                        <b>
-                          {user.firstName} {user.lastName}
-                        </b>
-                        {bits.length ? <span className="found-mini-meta">{bits.join(" · ")}</span> : null}
-                        {canHelp.length ? (
-                          <span className="found-mini-meta">Can help: {canHelp.slice(0, 3).join(", ")}</span>
-                        ) : null}
-                        {examMeta.length ? (
-                          <span className="found-mini-meta">Prepping: {examMeta.join(" · ")}</span>
-                        ) : null}
-                        {reasons.length ? (
-                          <span className="found-mini-why">{reasons.slice(0, 4).join(" · ")}</span>
-                        ) : null}
-                      </span>
-                    </Link>
-                    {bond?.status === "accepted" ? (
-                      <Link className="btn found-mini-action" href={`/friends/${user.id}`}>
+                    <div className="found-mini-row">
+                      <Link href={`/profile/${user.id}`} className="found-mini-main">
+                        <Avatar user={user} />
+                        <span className="found-mini-text">
+                          <b>
+                            {user.firstName} {user.lastName}
+                            <span className={`tag found-mini-match${i === 0 ? " found-mini-match-top" : ""}`}>
+                              {matchLabel} · {matchPct}%
+                            </span>
+                          </b>
+                          {bits.length ? <span className="found-mini-meta">{bits.join(" · ")}</span> : null}
+                          {canHelp.length ? (
+                            <span className="found-mini-meta">Can help: {canHelp.slice(0, 3).join(", ")}</span>
+                          ) : null}
+                          {examMeta.length ? (
+                            <span className="found-mini-meta">Prepping: {examMeta.join(" · ")}</span>
+                          ) : null}
+                        </span>
+                      </Link>
+                      {bond?.status === "accepted" ? (
+                      <Link className="btn action-btn found-mini-action" href={`/friends/${user.id}`}>
                         Message
                       </Link>
                     ) : bond?.status === "pending" && bond.toId === me.id ? (
                       <form action={acceptFriend} className="found-mini-form">
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="next" value={stay} />
-                        <button className="btn found-mini-action" type="submit">
-                          Accept
+                        <button className="btn action-btn found-mini-action" type="submit">
+                          Accept Buddy
                         </button>
                       </form>
                     ) : bond?.status === "pending" ? (
-                      <span className="pill found-mini-action found-mini-status">Sent</span>
+                      <span className="action-status found-mini-action found-mini-status">Sent</span>
                     ) : (
                       <form action={addFriend} className="found-mini-form">
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="next" value={stay} />
-                        <button className="btn found-mini-action" type="submit">
+                        <button className="btn action-btn found-mini-action" type="submit">
                           Add Buddy
                         </button>
                       </form>
                     )}
+                    </div>
+                    <MatchReasons reasons={reasons} />
                   </div>
                 );
               })}

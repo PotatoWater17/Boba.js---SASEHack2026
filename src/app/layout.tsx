@@ -83,10 +83,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : (
                 <div className="nav-auth-links">
                   <Link className="btn btn-ghost nav-auth-login" href="/login">
-                    Log in
+                    Log In
                   </Link>
                   <Link className="btn nav-auth-signup" href="/signup">
-                    Sign up
+                    Sign Up
                   </Link>
                 </div>
               )}

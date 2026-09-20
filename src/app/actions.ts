@@ -277,6 +277,7 @@ export async function createMeeting(
   const timeRaw = String(formData.get("time") || "").trim();
   const meetDate = String(formData.get("meetDate") || "").trim();
   const location = String(formData.get("location") || "").trim();
+  const isOnline = formData.get("isOnline") === "1";
   const university = resolveUniversity(String(formData.get("university") || me.university));
   const notes = String(formData.get("notes") || "").trim().slice(0, 300);
   const groupKind = String(formData.get("groupKind") || "small").trim();
@@ -293,12 +294,16 @@ export async function createMeeting(
   }
   if (!isValidMeetDate(meetDate)) return { error: "Pick today or a future date." };
   if (!time) return { error: "Pick a valid meeting time from the time picker." };
-  if (!location) return { error: "Enter a location." };
-  if (location.length > 120) return { error: "Location is too long (max 120 characters)." };
-  if (!university) return { error: "Pick a university so classmates can find this group." };
+  if (!location) {
+    return { error: isOnline ? "Enter a meeting link or platform." : "Enter a location." };
+  }
+  if (location.length > 120) {
+    return { error: isOnline ? "Meeting link is too long (max 120 characters)." : "Location is too long (max 120 characters)." };
+  }
+  if (!university) return { error: "Pick a university so buddies can find this group." };
   if (!kind) return { error: "Pick a group size category." };
   if (!(MEETUP_STYLES as readonly string[]).includes(style)) {
-    return { error: "Pick a meetup style from the list." };
+    return { error: "Pick a study style from the list." };
   }
 
   const maxSize = kind.id === "partner" ? 2 : maxSizeRaw;
@@ -316,6 +321,7 @@ export async function createMeeting(
       time,
       meetDate,
       location,
+      isOnline,
       university,
       notes,
       maxSize,
@@ -351,6 +357,7 @@ export async function updateMeeting(
   const timeRaw = String(formData.get("time") || "").trim();
   const meetDate = String(formData.get("meetDate") || "").trim();
   const location = String(formData.get("location") || "").trim();
+  const isOnline = formData.get("isOnline") === "1";
   const university = resolveUniversity(String(formData.get("university") || me.university));
   const notes = String(formData.get("notes") || "").trim().slice(0, 300);
   const groupKind = String(formData.get("groupKind") || "small").trim();
@@ -371,12 +378,16 @@ export async function updateMeeting(
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(meetDate)) return { error: "Pick a valid date." };
   if (!time) return { error: "Pick a valid meeting time from the time picker." };
-  if (!location) return { error: "Enter a location." };
-  if (location.length > 120) return { error: "Location is too long (max 120 characters)." };
-  if (!university) return { error: "Pick a university so classmates can find this group." };
+  if (!location) {
+    return { error: isOnline ? "Enter a meeting link or platform." : "Enter a location." };
+  }
+  if (location.length > 120) {
+    return { error: isOnline ? "Meeting link is too long (max 120 characters)." : "Location is too long (max 120 characters)." };
+  }
+  if (!university) return { error: "Pick a university so buddies can find this group." };
   if (!kind) return { error: "Pick a group size category." };
   if (!(MEETUP_STYLES as readonly string[]).includes(style)) {
-    return { error: "Pick a meetup style from the list." };
+    return { error: "Pick a study style from the list." };
   }
 
   const maxSize = kind.id === "partner" ? 2 : maxSizeRaw;
@@ -384,7 +395,7 @@ export async function updateMeeting(
     return { error: `For ${kind.label}, size must be ${kind.min === kind.max ? kind.min : `${kind.min}–${kind.max}`}.` };
   }
   if (maxSize < memberCount) {
-    return { error: `Max people can't be under ${memberCount} (people already in the group).` };
+    return { error: `Max buddies can't be under ${memberCount} (buddies already in the group).` };
   }
 
   await prisma.meeting.update({
@@ -395,6 +406,7 @@ export async function updateMeeting(
       time,
       meetDate,
       location,
+      isOnline,
       university,
       notes,
       maxSize,
@@ -706,7 +718,7 @@ export async function declineMeetupInvite(formData: FormData) {
       data: {
         fromId: me.id,
         toId: invite.fromId,
-        text: "Declined the meetup invite.",
+        text: "Declined the study buddy group invite.",
         seen: false,
       },
     });
@@ -834,6 +846,8 @@ export async function unsendMessage(formData: FormData) {
 export async function markDmSeen(userId: string) {
   const me = await getMe();
   if (!me || !userId || userId === me.id) return;
+  const bond = await friendshipBetween(me.id, userId);
+  if (!bond || bond.status !== "accepted") return;
   await prisma.directMessage.updateMany({
     where: { fromId: userId, toId: me.id, seen: false },
     data: { seen: true },

@@ -3,6 +3,7 @@ import { Avatar } from "@/avatar";
 import { backfillAccountNumbers, formatAccountId, parseAccountQuery } from "@/account-id";
 import { requireAdmin } from "@/admin";
 import { prisma, timeAgo } from "@/lib";
+import { serverDayAgo, serverMonthAgo, serverTwoWeeksAgo, serverWeekAgo } from "@/server-time";
 import type { Prisma } from "@prisma/client";
 import { DeleteUserButton } from "./delete-user";
 import { PasswordResetQueue } from "./password-resets";
@@ -45,11 +46,10 @@ export default async function AdminPage({
   const page = Math.max(1, Number(pageRaw) || 1);
   const accountNo = parseAccountQuery(q);
 
-  const now = Date.now();
-  const dayAgo = new Date(now - 24 * 60 * 60 * 1000);
-  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
-  const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+  const dayAgo = serverDayAgo();
+  const weekAgo = serverWeekAgo();
+  const twoWeeksAgo = serverTwoWeeksAgo();
+  const monthAgo = serverMonthAgo();
 
   const where: Prisma.UserWhereInput = {};
   if (role === "admin") where.isAdmin = true;

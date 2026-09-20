@@ -288,7 +288,7 @@ export function groupMessagePreview(msg: {
   user: { firstName: string };
 }) {
   if (msg.unsent) return "Unsent";
-  if (msg.authorRemoved) return "Removed user";
+  if (msg.authorRemoved) return "Removed buddy";
   const body = msg.text || (msg.fileName ? "Sent an attachment" : "New message");
   return `${msg.user.firstName}: ${body}`;
 }
@@ -411,6 +411,14 @@ function pushReason(reasons: string[], reason: string) {
   if (!reasons.includes(reason)) reasons.push(reason);
 }
 
+function fieldEquals(want: string | undefined, have: string | undefined) {
+  const w = want?.trim();
+  if (!w) return true;
+  const h = have?.trim();
+  if (!h) return false;
+  return w.toLowerCase() === h.toLowerCase();
+}
+
 /** Classes you're prepping for — profile needHelp plus exam subject. */
 function effectiveNeed(prefs: BuddySearchPrefs) {
   const need = splitList(prefs.needHelp);
@@ -458,13 +466,45 @@ export function examMeetupScore(
   return score;
 }
 
+/** Score a public study group against full Find Buddies search prefs. */
+export function studyGroupMatchScore(
+  prefs: BuddySearchPrefs,
+  meetup: BuddyMeetupLite & { university?: string },
+) {
+  const examScore = examMeetupScore(prefs, meetup);
+  if (examScore > 0) return examScore;
+
+  const hasExamSearch =
+    Boolean(prefs.examCourse?.trim()) ||
+    splitList(prefs.examTopics || "").length > 0 ||
+    Boolean(prefs.examDate?.trim());
+  if (hasExamSearch) return 0;
+
+  let score = 0;
+  const uni = prefs.university?.trim();
+  if (uni) {
+    if (!meetup.university?.trim() || uni.toLowerCase() !== meetup.university.trim().toLowerCase()) {
+      return 0;
+    }
+    score += 35;
+  }
+  if (prefs.studyStyle?.trim() && meetup.style === prefs.studyStyle) score += 30;
+  return score;
+}
+
 /** Score another student against your classes, campus, exam prep, and major. */
 export function buddyMatch(
   me: BuddySearchPrefs,
   other: BuddySearchPrefs & { year?: string },
   meetups: BuddyMeetupLite[] = [],
 ) {
-  if (me.year?.trim() && other.year?.trim() && me.year.trim().toLowerCase() !== other.year.trim().toLowerCase()) {
+  if (!fieldEquals(me.year, other.year) && me.year?.trim() && other.year?.trim()) {
+    return { score: 0, reasons: [] as string[] };
+  }
+  if (me.university?.trim() && !fieldEquals(me.university, other.university)) {
+    return { score: 0, reasons: [] as string[] };
+  }
+  if (me.major?.trim() && !fieldEquals(me.major, other.major)) {
     return { score: 0, reasons: [] as string[] };
   }
 
@@ -476,6 +516,9 @@ export function buddyMatch(
   const theirExamTopics = splitList(other.examTopics || "");
   const examCourse = (me.examCourse || "").trim();
   const examFocused = Boolean(examCourse);
+  const topicFocused = myExamTopics.length > 0 && !examFocused;
+  const uniFilter = me.university?.trim() || "";
+  const majorFilter = me.major?.trim() || "";
   const reasons: string[] = [];
   let score = 0;
   let courseRelevant = false;
@@ -538,31 +581,41 @@ export function buddyMatch(
       markCourseRelevant();
       pushReason(reasons, `${topicHits} shared exam topic${topicHits === 1 ? "" : "s"}`);
     }
-    if (!examFocused) {
-      const theirTopicPool = [...theirExamTopics, ...splitList(other.canHelp), ...splitList(other.needHelp)];
-      const prepHits = topicListOverlap(myExamTopics, theirTopicPool);
-      if (prepHits > topicHits) {
-        score += (prepHits - topicHits) * 15;
-        pushReason(reasons, "covers your weak topics");
-      }
+    const theirTopicPool = [...theirExamTopics, ...splitList(other.canHelp), ...splitList(other.needHelp)];
+    const prepHits = topicListOverlap(myExamTopics, theirTopicPool);
+    if (prepHits > topicHits) {
+      score += (prepHits - topicHits) * (examFocused ? 20 : 15);
+      markCourseRelevant();
+      pushReason(reasons, "covers your weak topics");
+    }
+    if (examFocused && prepHits > 0 && topicHits === 0) {
+      markCourseRelevant();
     }
   }
 
-  if (
-    me.examDate &&
-    other.examDate &&
-    (!examFocused || (other.examCourse && classOverlap(other.examCourse, examCourse)))
-  ) {
-    const gap = Math.abs(daysBetweenDates(me.examDate, other.examDate) ?? 999);
-    if (gap <= 3) {
-      score += 60;
-      pushReason(reasons, "exam same week");
-    } else if (gap <= 7) {
-      score += 40;
-      pushReason(reasons, "exam dates close");
-    } else if (gap <= 14) {
-      score += 20;
-      pushReason(reasons, "exam dates nearby");
+  if (me.examDate?.trim()) {
+    const dateRelevant =
+      !examFocused ||
+      (other.examCourse && classOverlap(other.examCourse, examCourse)) ||
+      courseRelevant;
+    if (dateRelevant && other.examDate?.trim()) {
+      const gap = Math.abs(daysBetweenDates(me.examDate, other.examDate) ?? 999);
+      if (gap <= 3) {
+        score += 60;
+        markCourseRelevant();
+        pushReason(reasons, "exam same week");
+      } else if (gap <= 7) {
+        score += 40;
+        markCourseRelevant();
+        pushReason(reasons, "exam dates close");
+      } else if (gap <= 14) {
+        score += 20;
+        markCourseRelevant();
+        pushReason(reasons, "exam dates nearby");
+      }
+    } else if (dateRelevant && examFocused && courseRelevant) {
+      score += 10;
+      pushReason(reasons, "prepping for your exam window");
     }
   }
 
@@ -586,7 +639,7 @@ export function buddyMatch(
         score += 20;
         pushReason(reasons, `group uses ${me.studyStyle.toLowerCase()}`);
       }
-      if (me.examDate && m.meetDate) {
+      if (subjectMatch && me.examDate && m.meetDate) {
         const beforeExam = daysBetweenDates(m.meetDate, me.examDate);
         if (beforeExam !== null && beforeExam >= 0 && beforeExam <= 10) {
           score += 25;
@@ -596,28 +649,48 @@ export function buddyMatch(
     }
   }
 
-  if (
-    courseRelevant &&
-    me.studyStyle?.trim() &&
-    other.studyStyle?.trim() &&
-    me.studyStyle === other.studyStyle
-  ) {
-    score += 30;
-    pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
+  if (me.studyStyle?.trim()) {
+    if (other.studyStyle?.trim() === me.studyStyle) {
+      score += courseRelevant ? 35 : 30;
+      pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
+    } else if (other.studyStyle?.trim()) {
+      score -= 12;
+    }
   }
 
-  if (courseRelevant && me.university && other.university && me.university.toLowerCase() === other.university.toLowerCase()) {
-    score += 30;
-    pushReason(reasons, "same campus");
+  if (uniFilter && fieldEquals(uniFilter, other.university)) {
+    score += courseRelevant ? 35 : 25;
+    if (!reasons.includes("same campus")) pushReason(reasons, "same campus");
   }
-  if (courseRelevant && me.major && other.major && me.major.toLowerCase() === other.major.toLowerCase()) {
-    score += 20;
+  if (majorFilter && fieldEquals(majorFilter, other.major)) {
+    score += courseRelevant ? 25 : 20;
+    if (!reasons.includes("same major")) pushReason(reasons, "same major");
+  } else if (!majorFilter && me.major?.trim() && fieldEquals(me.major, other.major)) {
+    score += courseRelevant ? 20 : 12;
     pushReason(reasons, "same major");
+  }
+
+  if (!examFocused && !topicFocused && score === 0) {
+    if (uniFilter) {
+      score += 20;
+      pushReason(reasons, "on your campus");
+    }
+    if (majorFilter && fieldEquals(majorFilter, other.major)) {
+      score += 15;
+      pushReason(reasons, "same major");
+    }
+    if (me.studyStyle?.trim() && other.studyStyle?.trim() === me.studyStyle) {
+      score += 25;
+      pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
+    }
   }
 
   if (examFocused && !courseRelevant) {
     return { score: 0, reasons: [] };
   }
+  if (topicFocused && !courseRelevant) {
+    return { score: 0, reasons: [] };
+  }
 
-  return { score, reasons };
+  return { score: Math.max(0, score), reasons };
 }

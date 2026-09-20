@@ -2,6 +2,19 @@
 
 SASEHack 2026 — study group matching for college students.
 
+## Live demo (temporary)
+
+**https://lawn-guests-cologne-dancing.trycloudflare.com**
+
+Public Cloudflare tunnel to a dev machine during the hackathon. Try **`ryanh@auburn.edu`** / **`RyanH`** or **`jsmith@auburn.edu`** / **`Password1!`**.
+
+> This URL only works while the host laptop is awake and both `npm run dev` and the Cloudflare tunnel are running. If you see a 502, the server was restarted — check back or run locally (below).
+
+Same network backups (if you're on the team's Wi‑Fi / Tailscale):
+
+- `http://10.2.216.3:3000`
+- `http://100.74.166.121:3000`
+
 ## Demo accounts
 
 See **[DEMO-DATA.md](./DEMO-DATA.md)** for full profiles, 51 demo accounts (backed up in `prisma/accounts.snapshot.json`), friendships, DMs, group chats, and restore commands.
@@ -10,7 +23,7 @@ See **[DEMO-DATA.md](./DEMO-DATA.md)** for full profiles, 51 demo accounts (back
 
 | Who | Email | Password |
 |-----|-------|----------|
-| Main demo (Daniel) | `jsmith@auburn.edu` | `Password1!` |
+| Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
 | Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
 | Dev / admin | `aidenb@auburn.edu` | `AidenB` |
 | Dev / admin | `bryanm@auburn.edu` | `BryanM` |
@@ -30,8 +43,9 @@ Or step by step:
 
 ```bash
 npm install
-npx prisma db push
+npx prisma db push    # apply schema (includes isOnline on meetings)
 npm run db:seed
+npm run db:backfill-online   # optional if seed ran before isOnline existed
 npm run dev
 ```
 

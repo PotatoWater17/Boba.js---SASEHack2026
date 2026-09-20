@@ -28,7 +28,7 @@ export default async function ForgotPasswordPage({
       title="Forgot Password"
       footer={
         <p className="auth-switch">
-          Remembered it? <Link href="/login">Back to login</Link>
+          Remembered it? <Link href="/login">Back to Log In</Link>
         </p>
       }
     >
@@ -52,7 +52,7 @@ export default async function ForgotPasswordPage({
           />
         </label>
         <button className="btn auth-submit" type="submit">
-          Request password reset
+          Request Password Reset
         </button>
       </form>
     </AuthPage>

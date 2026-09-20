@@ -8,6 +8,7 @@ import { messageCopyText } from "@/message-copy";
 import { getMe, isBlockedBetween, prisma, timeAgo } from "@/lib";
 import { packReactions } from "@/reactions";
 import { unsendDm } from "@/app/actions";
+import { ChatDropZone } from "@/chat-drop";
 import { DmCompose } from "./compose";
 import { DmThread } from "./thread";
 import { SeenOnOpen } from "./seen";
@@ -69,7 +70,7 @@ export default async function FriendChatPage({
       <SeenOnOpen userId={friend.id} />
       <header className="page-header">
         <Link href="/friends" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
-          ← Chats
+          ← My Buddies
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href={`/profile/${friend.id}`}>
@@ -79,7 +80,7 @@ export default async function FriendChatPage({
             <h1 className="page-title" style={{ margin: 0 }}>
               {friend.firstName} {friend.lastName}
             </h1>
-            <p style={{ margin: "2px 0 0" }}>{friend.university || friend.major || "Study buddy"}</p>
+            <p style={{ margin: "2px 0 0" }}>{friend.university || friend.major || "Study Buddy"}</p>
           </div>
         </div>
       </header>
@@ -87,11 +88,15 @@ export default async function FriendChatPage({
       {error === "type" ? <p className="err">That file type isn&apos;t allowed.</p> : null}
       {error === "size" ? <p className="err">Keep attachments under 8 MB.</p> : null}
       {error === "empty" ? <p className="err">Type a message or attach a file.</p> : null}
-      {error === "full" ? <p className="err">That meetup is full.</p> : null}
-      {error === "blocked" ? <p className="err">You can&apos;t message this user.</p> : null}
+      {error === "full" ? <p className="err">That study buddy group is full.</p> : null}
+      {error === "blocked" ? <p className="err">You can&apos;t message this buddy.</p> : null}
+      {error === "buddy" ? (
+        <p className="err">You&apos;re no longer buddies — reconnect from their profile.</p>
+      ) : null}
 
-      <div className="card">
-        <DmThread messageCount={messages.length}>
+      <ChatDropZone className="chat-drop-zone-fill">
+        <div className="card">
+          <DmThread messageCount={messages.length}>
           {messages.length === 0 ? (
             <p className="text-muted" style={{ margin: 0 }}>No messages yet. Say hi.</p>
           ) : (
@@ -147,9 +152,10 @@ export default async function FriendChatPage({
               );
             })
           )}
-        </DmThread>
-        <DmCompose userId={friend.id} />
-      </div>
+          </DmThread>
+          <DmCompose key={messages.length} userId={friend.id} />
+        </div>
+      </ChatDropZone>
     </div>
   );
 }

@@ -3,6 +3,7 @@
  * Idempotent via unique `notes` per meetup.
  */
 import type { PrismaClient } from "@prisma/client";
+import { inferMeetingOnline } from "../src/meeting-format";
 
 function dayOffset(days: number) {
   const d = new Date();
@@ -391,6 +392,7 @@ export async function seedMemeMeetups(prisma: PrismaClient) {
         time: spec.time,
         meetDate: dayOffset(spec.offset),
         location: spec.location,
+        isOnline: inferMeetingOnline(spec.location),
         university: spec.university,
         notes: spec.notes,
         maxSize: spec.maxSize,

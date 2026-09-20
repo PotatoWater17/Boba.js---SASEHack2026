@@ -2,13 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { purgeOrphanMeetings } from "@/meeting-cleanup";
 import { formatMeetDate, getMe, groupKindLabel, groupMessagePreview, prisma, timeAgo } from "@/lib";
+import { serverWeekAgoMs } from "@/server-time";
+import { MeetFormatBadge } from "@/meet-format-badge";
 
 const FILTERS = [
   { id: "", label: "All" },
   { id: "unread", label: "Unread" },
   { id: "recent", label: "Recent" },
-  { id: "campus", label: "Same campus" },
-  { id: "new", label: "No chats yet" },
+  { id: "campus", label: "Same Campus" },
+  { id: "new", label: "No Chats Yet" },
 ] as const;
 
 export default async function GroupsPage({
@@ -52,7 +54,7 @@ export default async function GroupsPage({
     unreadByMeeting.set(msg.meetingId, (unreadByMeeting.get(msg.meetingId) || 0) + 1);
   }
 
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekAgo = serverWeekAgoMs();
   const rows = memberships
     .map((mem) => {
       const m = mem.meeting;
@@ -87,11 +89,20 @@ export default async function GroupsPage({
     return qs ? `/groups?${qs}` : "/groups";
   }
 
+  function emptyGroupsMessage() {
+    if (q) return "Nobody matched that search.";
+    if (filter === "unread") return "You're all caught up — no unread group messages.";
+    if (filter === "recent") return "No group chats in the last 7 days.";
+    if (filter === "campus") return "No groups on your campus.";
+    if (filter === "new") return "No groups without messages yet.";
+    return "Nobody matched that search.";
+  }
+
   return (
     <div className="page chats-page" style={{ maxWidth: 640 }}>
       <header className="page-header" style={{ textAlign: "center" }}>
         <h1 className="page-title">My Study Buddy Groups</h1>
-        <p>Meetups you signed up for — open one to chat.</p>
+        <p>Study buddy groups you joined — open one to chat.</p>
       </header>
 
       {notice === "deleted" ? <p className="ok">Study group deleted.</p> : null}
@@ -104,6 +115,7 @@ export default async function GroupsPage({
             defaultValue={qRaw || ""}
             placeholder="Search subject, topic, location…"
             style={{ margin: 0, flex: 1 }}
+            autoComplete="off"
           />
           {filter ? <input type="hidden" name="filter" value={filter} /> : null}
           <button className="btn" type="submit">
@@ -126,7 +138,7 @@ export default async function GroupsPage({
         </div>
       ) : rows.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
-          Nobody matched that search.
+          {emptyGroupsMessage()}
         </div>
       ) : (
         <div className="chat-list">
@@ -137,7 +149,7 @@ export default async function GroupsPage({
               <Link
                 key={m.id}
                 href={`/meetings/${m.id}`}
-                className={`chat-row chat-row-group${unread ? " unread" : ""}`}
+                className={`chat-row chat-row-group hover-lift${unread ? " unread" : ""}`}
               >
                 <span className="avatar group-avatar">{m.subject.slice(0, 2).toUpperCase()}</span>
                 <span className="chat-row-text">
@@ -156,6 +168,7 @@ export default async function GroupsPage({
                       </span>
                     ) : null}
                     <span className="meet-badges">
+                      <MeetFormatBadge isOnline={m.isOnline} />
                       <span className={`badge kind-${m.groupKind || "small"}`}>
                         {groupKindLabel(m.groupKind || "small")}
                       </span>

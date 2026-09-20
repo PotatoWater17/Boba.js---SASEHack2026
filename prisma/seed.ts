@@ -6,6 +6,7 @@ import path from "path";
 import { seedMemeMeetups } from "../scripts/meme-meetups";
 import { backfillAccountNumbers } from "../src/account-id";
 import { AVATAR_DIR } from "../src/files";
+import { inferMeetingOnline } from "../src/meeting-format";
 
 const prisma = new PrismaClient();
 
@@ -1141,6 +1142,14 @@ async function main() {
   }
 
   const memeMeetups = await seedMemeMeetups(prisma);
+
+  const meetings = await prisma.meeting.findMany({ select: { id: true, location: true } });
+  for (const meeting of meetings) {
+    await prisma.meeting.update({
+      where: { id: meeting.id },
+      data: { isOnline: inferMeetingOnline(meeting.location) },
+    });
+  }
 
   await backfillAccountNumbers();
   console.log("seeded. team: ryanh / aidenb / bryanm / danielk @auburn.edu (RyanH, AidenB, BryanM, DanielK)");

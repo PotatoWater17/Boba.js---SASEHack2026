@@ -15,8 +15,8 @@ export function JoinRequestsPanel({
   if (!requests.length) return null;
 
   return (
-    <section className="meet-join-requests">
-      <h2>Join requests</h2>
+    <section className="meet-join-requests page-section">
+      <h2 className="page-section-title">Join Requests</h2>
       <div className="card" style={{ display: "grid", gap: 12 }}>
         {requests.map((req) => (
           <div key={req.id} className="meet-join-request-row">
@@ -37,14 +37,14 @@ export function JoinRequestsPanel({
               <form action={approveJoinRequest}>
                 <input type="hidden" name="requestId" value={req.id} />
                 <input type="hidden" name="meetingId" value={meetingId} />
-                <button type="submit" className="btn">
+                <button type="submit" className="btn action-btn">
                   Approve
                 </button>
               </form>
               <form action={declineJoinRequest}>
                 <input type="hidden" name="requestId" value={req.id} />
                 <input type="hidden" name="meetingId" value={meetingId} />
-                <button type="submit" className="pill">
+                <button type="submit" className="btn-ghost action-btn">
                   Decline
                 </button>
               </form>

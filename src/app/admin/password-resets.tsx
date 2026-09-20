@@ -34,7 +34,7 @@ export function PasswordResetQueue({ requests }: { requests: ResetRow[] }) {
             </div>
             <form action={dismissPasswordReset}>
               <input type="hidden" name="requestId" value={req.id} />
-              <button type="submit" className="pill">
+              <button type="submit" className="btn-ghost action-btn">
                 Dismiss
               </button>
             </form>

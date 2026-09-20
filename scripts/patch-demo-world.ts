@@ -3,6 +3,7 @@
  * and seed dev-team meetings + cross-school meetups if missing.
  */
 import { PrismaClient } from "@prisma/client";
+import { inferMeetingOnline } from "../src/meeting-format";
 
 const prisma = new PrismaClient();
 
@@ -83,6 +84,7 @@ async function ensureMeeting(
       time: data.time,
       meetDate: dayOffset(data.offset),
       location: data.location,
+      isOnline: inferMeetingOnline(data.location),
       university: data.university,
       notes,
       maxSize: 8,

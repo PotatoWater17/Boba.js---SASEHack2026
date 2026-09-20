@@ -131,13 +131,13 @@ export default async function DashboardPage({
     <div className="page motion-page-enter">
       <header className="page-header">
         <h1 className="page-title">Hey {me.firstName}</h1>
-        <p>Your groups and what&apos;s coming up.</p>
+        <p>Your study buddy groups and what&apos;s coming up.</p>
       </header>
 
       <div className="dash-stats">
         <div className="dash-stat">
           <strong>{meetings.length}</strong>
-          <span>Groups</span>
+          <span>Buddy Groups</span>
         </div>
         <div className="dash-stat">
           <strong>{upcoming.length}</strong>
@@ -145,7 +145,7 @@ export default async function DashboardPage({
         </div>
         <div className="dash-stat">
           <strong>{thisWeek.length}</strong>
-          <span>This week</span>
+          <span>This Week</span>
         </div>
         <div className="dash-stat">
           <strong>{hosting}</strong>
@@ -155,9 +155,9 @@ export default async function DashboardPage({
 
       <section className="dash-section">
         <div className="dash-section-head">
-          <h2>My Buddies</h2>
+          <h2 className="page-section-title">My Buddies</h2>
           <Link href="/friends" className="dash-hint" style={{ textDecoration: "underline" }}>
-            {friends.length} buddies · view all chats
+            {friends.length} buddies · View All Chats
           </Link>
         </div>
         {incoming.length > 0 ? (
@@ -177,18 +177,18 @@ export default async function DashboardPage({
                     <div className="dash-meet-meta">wants to be buddies</div>
                   </div>
                 </Link>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <div className="action-btns">
                   <form action={acceptFriend}>
                     <input type="hidden" name="userId" value={row.from.id} />
                     <input type="hidden" name="next" value="/dashboard" />
-                    <button type="submit" className="btn">
-                      Accept
+                    <button type="submit" className="btn action-btn">
+                      Accept Buddy
                     </button>
                   </form>
                   <form action={removeFriend}>
                     <input type="hidden" name="userId" value={row.from.id} />
                     <input type="hidden" name="next" value="/dashboard" />
-                    <button type="submit" className="pill">
+                    <button type="submit" className="btn-ghost action-btn">
                       Decline
                     </button>
                   </form>
@@ -199,7 +199,7 @@ export default async function DashboardPage({
         ) : null}
         {friends.length === 0 ? (
           <div className="card">
-            No buddies yet. Open someone&apos;s profile from a meetup and hit Add buddy.
+            No buddies yet. Open someone&apos;s profile from a study buddy group and hit Add Buddy.
           </div>
         ) : (
           <>
@@ -208,14 +208,14 @@ export default async function DashboardPage({
                 <Link
                   key={f.id}
                   href={`/friends/${f.id}`}
-                  className="dash-friend motion-stagger-item"
+                  className="dash-friend hover-lift motion-stagger-item"
                   style={{ ["--motion-delay" as string]: `${i * 45}ms` }}
                 >
                   <Avatar user={f} />
                   <b>
                     {f.firstName} {f.lastName}
                   </b>
-                  <span>{f.university || f.major || "Study buddy"}</span>
+                  <span>{f.university || f.major || "Study Buddy"}</span>
                 </Link>
               ))}
             </div>
@@ -223,7 +223,7 @@ export default async function DashboardPage({
               <p className="dash-hint" style={{ marginTop: 12 }}>
                 Showing your top 5 by recent chats.{" "}
                 <Link href="/friends" style={{ textDecoration: "underline" }}>
-                  See all {friends.length} buddies
+                  See All {friends.length} Buddies
                 </Link>
               </p>
             ) : null}
@@ -233,14 +233,14 @@ export default async function DashboardPage({
 
       <section className="dash-section">
         <div className="dash-section-head">
-          <h2>Next up</h2>
+          <h2 className="page-section-title">Next Up</h2>
         </div>
         {upcoming.length === 0 ? (
           <div className="card">Nothing upcoming yet.</div>
         ) : (
           <div className="dash-meet-list">
             {upcoming.slice(0, 5).map((m) => (
-              <div key={m.id} className="dash-meet">
+              <Link key={m.id} href={`/meetings/${m.id}`} className="dash-meet hover-lift">
                 <div className="dash-meet-main">
                   <b>
                     {m.subject}
@@ -261,7 +261,7 @@ export default async function DashboardPage({
                     ))}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -269,7 +269,7 @@ export default async function DashboardPage({
 
       <section className="dash-section" id="cal">
         <div className="dash-section-head">
-          <h2>{monthName}</h2>
+          <h2 className="page-section-title">{monthName}</h2>
           <div className="cal-nav">
             <Link className="pill" href={calHref(year, month - 1)} aria-label="Previous month">
               ←

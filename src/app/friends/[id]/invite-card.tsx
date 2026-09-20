@@ -18,7 +18,7 @@ export function InviteCard({
 
   return (
     <div className="dm-invite">
-      <div className="dm-invite-title">Meetup invite</div>
+      <div className="dm-invite-title">Study Buddy Group Invite</div>
       <b>
         {invite.meeting.subject}
         {topic ? ` — ${topic}` : ""}
@@ -28,13 +28,13 @@ export function InviteCard({
         <div className="dm-invite-actions">
           <form action={acceptMeetupInvite}>
             <input type="hidden" name="inviteId" value={invite.id} />
-            <button className="btn" type="submit">
+            <button className="btn action-btn" type="submit">
               Accept
             </button>
           </form>
           <form action={declineMeetupInvite}>
             <input type="hidden" name="inviteId" value={invite.id} />
-            <button className="pill" type="submit">
+            <button className="btn-ghost action-btn" type="submit">
               Decline
             </button>
           </form>
@@ -44,7 +44,7 @@ export function InviteCard({
           <span className="pill">{invite.status === "accepted" ? "Accepted" : invite.status === "declined" ? "Declined" : "Pending"}</span>
           {invite.status === "accepted" || invite.status === "pending" ? (
             <Link className="pill active" href={`/meetings/${invite.meetingId}`}>
-              View meetup
+              View Group
             </Link>
           ) : null}
         </div>

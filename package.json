@@ -17,7 +17,8 @@
     "db:refresh-avatars": "tsx scripts/refresh-avatars.ts",
     "db:ryan-friends": "tsx scripts/seed-ryan-friends.ts",
     "db:meme-meetups": "tsx scripts/seed-meme-meetups.ts",
-    "db:demo-full": "npm run db:reset && npm run db:ryan-friends && npm run db:restore-accounts",
+    "db:backfill-online": "tsx scripts/backfill-meeting-online.ts",
+    "db:demo-full": "npm run db:reset && npm run db:ryan-friends && npm run db:restore-accounts && npm run db:backfill-online",
     "logo:export": "node scripts/export-logo.mjs"
   },
   "prisma": {

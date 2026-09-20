@@ -16,12 +16,12 @@ const features = [
   {
     icon: <FilterIcon />,
     title: "Same course. Same grind.",
-    body: "Filter by the class you're actually in — land with classmates prepping for the same exam, not a random hangout.",
+    body: "Filter by the class you're actually in and land with buddies preparing for the same exam, not a random hangout.",
   },
   {
     icon: <PreviewIcon />,
     title: "Know before you go",
-    body: "See who's joining, group size, meeting spot, and what you'll cover — all before you commit.",
+    body: "See who's joining, group size, meeting spot, and what you'll cover, all before you commit.",
   },
   {
     icon: <MatchIcon />,
@@ -31,7 +31,7 @@ const features = [
   {
     icon: <SparkIcon />,
     title: "Zero noise",
-    body: "No infinite scroll, no algorithm feed — just meetups, profiles, and a group chat to stay aligned.",
+    body: "No infinite scroll, no algorithm feed. Just study buddy groups, profiles, and group chat to stay aligned.",
   },
 ];
 
@@ -39,7 +39,7 @@ const reasons = [
   {
     icon: <BookIcon />,
     title: "Prepare for exams",
-    body: "Find classmates taking the same midterm or final and review topics together before test day.",
+    body: "Find buddies preparing for the same midterm or final and review topics together before test day.",
   },
   {
     icon: <PeopleIcon />,
@@ -49,7 +49,7 @@ const reasons = [
   {
     icon: <ChatIcon />,
     title: "Stay coordinated",
-    body: "Use the group chat to lock a time, share location updates, and keep everyone on the same page.",
+    body: "Use group chat to lock a time, share location updates, and keep everyone on the same page.",
   },
 ];
 
@@ -61,7 +61,7 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
           <h2 className="section-title">About Us</h2>
           <p className="lead">
             We built <span className="brand-name">StudyBuddyBoard</span> so you don&apos;t have to cram by yourself. Post
-            a meetup, jump into one for your class, see who&apos;s going, and keep the group chat in one place — no more
+            a study buddy group, jump into one for your class, see who&apos;s going, and keep group chat in one place. No more
             hunting through random group chats and flyers.
           </p>
         </section>
@@ -69,9 +69,9 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
 
       <ScrollReveal delay={60}>
         <section className="section about-panel">
-          <h2 className="section-title">Built for real study sessions</h2>
+          <h2 className="section-title">Built for Real Study Sessions</h2>
           <p className="lead feature-lead">
-            Everything you need to find the right buddies — without the clutter of a social network.
+            Everything you need to find the right buddies, without the clutter of a social network.
           </p>
           <div className="feature-grid">
             {features.map((item, i) => (
@@ -89,7 +89,7 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
 
       <ScrollReveal delay={60}>
         <section className="section about-panel">
-          <h2 className="section-title">Three things we help with</h2>
+          <h2 className="section-title">Three Things We Help With</h2>
           <div className="reason-row">
             {reasons.map((item, i) => (
               <ScrollReveal key={item.title} delay={i * 90} className="about-reveal-card">
@@ -107,13 +107,13 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
       <ScrollReveal direction="scale" delay={80}>
         <section className="section cta-band about-panel">
           <h2 className="section-title" style={{ marginTop: 0 }}>
-            Ready to find a study buddy?
+            Ready to Find a Study Buddy?
           </h2>
           <p style={{ marginBottom: 16 }}>
-            Make an account with your school email and jump into a meetup for your next exam.
+            Make an account with your school email and jump into a study buddy group for your next exam.
           </p>
           <Link className="btn-accent" href={loggedIn ? "/dashboard" : "/signup"}>
-            {loggedIn ? "Open Buddy Board" : "Create an account"}
+            {loggedIn ? "Open Buddy Board" : "Create an Account"}
           </Link>
         </section>
       </ScrollReveal>

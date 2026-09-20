@@ -41,11 +41,11 @@ export default async function IntroPage() {
               </p>
               <div className="about-hero-actions motion-hero-item motion-hero-d5">
                 <Link className="btn-accent" href={me ? "/dashboard" : "/signup"}>
-                  {me ? "Go to Buddy Board" : "Get started"}
+                  {me ? "Go to Buddy Board" : "Get Started"}
                 </Link>
                 {!me ? (
                   <Link className="btn" href="/login">
-                    Log in
+                    Log In
                   </Link>
                 ) : (
                   <Link className="btn" href="/find">
