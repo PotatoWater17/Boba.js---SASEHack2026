@@ -6,21 +6,11 @@ const nextConfig: NextConfig = {
   ...(isProd
     ? {}
     : {
-        allowedDevOrigins: [
-          "10.2.216.3",
-          "100.74.166.121",
-          "*.trycloudflare.com",
-          "*.loca.lt",
-        ],
+        allowedDevOrigins: ["*.trycloudflare.com", "*.loca.lt"],
         experimental: {
           serverActions: {
             bodySizeLimit: "10mb",
-            allowedOrigins: [
-              "10.2.216.3:3000",
-              "100.74.166.121:3000",
-              "*.trycloudflare.com",
-              "*.loca.lt",
-            ],
+            allowedOrigins: ["*.trycloudflare.com", "*.loca.lt"],
           },
         },
       }),

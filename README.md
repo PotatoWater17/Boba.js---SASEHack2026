@@ -1,68 +1,181 @@
 # StudyBuddyBoard
 
-SASEHack 2026 — study group matching for college students.
+SASEHack 2026 — a campus study-group app for finding exam prep buddies, joining study groups, and coordinating over chat.
 
-## Live demo (temporary)
+## What it does
 
-**https://lawn-guests-cologne-dancing.trycloudflare.com**
+- **Find Buddies** — match students by class, exam topics, major, campus, and study style
+- **Browse / create study groups** — public groups with filters (subject, format, size, style)
+- **Buddy DMs + group chat** — attachments, reactions, meetup invites
+- **Buddy Board dashboard** — upcoming groups, calendar, unread messages
 
-Public Cloudflare tunnel to a dev machine during the hackathon. Try **`ryanh@auburn.edu`** / **`RyanH`** or **`jsmith@auburn.edu`** / **`Password1!`**.
+---
 
-> This URL only works while the host laptop is awake and both `npm run dev` and the Cloudflare tunnel are running. If you see a 502, the server was restarted — check back or run locally (below).
+## How it is implemented
 
-Same network backups (if you're on the team's Wi‑Fi / Tailscale):
+### Stack
 
-- `http://10.2.216.3:3000`
-- `http://100.74.166.121:3000`
+| Layer | Technology |
+|-------|------------|
+| Framework | [Next.js 16](https://nextjs.org) (App Router, React Server Components, Server Actions) |
+| UI | React 19, Tailwind CSS 4 |
+| Database | SQLite via [Prisma](https://www.prisma.io) (`prisma/dev.db`) |
+| Auth | Signed HTTP-only session cookie (`userId` + HMAC); passwords hashed with scrypt |
+| File uploads | Local disk under `uploads/` (avatars, chat attachments) |
 
-## Demo accounts
+### Architecture (high level)
 
-See **[DEMO-DATA.md](./DEMO-DATA.md)** for full profiles, 51 demo accounts (backed up in `prisma/accounts.snapshot.json`), friendships, DMs, group chats, and restore commands.
+```
+Browser
+  → Next.js pages (src/app/**)     — server-rendered UI, forms post to Server Actions
+  → Server Actions (src/app/actions.ts) — login, CRUD, chat, matching, moderation
+  → Prisma (src/lib.ts)            — SQLite queries
+  → prisma/dev.db                  — users, friendships, meetings, messages, DMs
+  → uploads/                       — images/files referenced by DB keys
+```
 
-**Quick reference**
+**Routing** lives under `src/app/`:
+
+| Path | Purpose |
+|------|---------|
+| `/` | About / landing |
+| `/login`, `/signup` | Auth |
+| `/dashboard` | Buddy Board (calendar, next up, buddy requests) |
+| `/find`, `/find/buddies`, `/find/browse`, `/find/create` | Matching and groups |
+| `/friends`, `/friends/[id]` | Buddy list and DMs |
+| `/groups`, `/meetings/[id]` | Joined groups and group chat |
+| `/profile/[id]` | Profiles and preferences |
+| `/admin` | User admin (dev team accounts) |
+
+**Shared logic** — `src/lib.ts` (matching scores, auth helpers), `src/ui.tsx` (forms, pickers), `src/chat-compose.tsx` (shared chat input).
+
+**Demo data** — `prisma/seed.ts` creates users and sample content; `prisma/accounts.snapshot.json` backs up profiles for restore scripts. See [DEMO-DATA.md](./DEMO-DATA.md).
+
+### Database models (main)
+
+- `User` — profile, exam prefs, classes need/can help
+- `Friendship` — buddy requests (`pending` / `accepted`)
+- `Meeting` + `Member` — study groups and membership
+- `DirectMessage`, `Message` — 1:1 and group chat
+- `Block`, `MeetingJoinRequest`, `MeetupInvite` — safety and join flows
+
+After cloning or pulling schema changes, always sync the DB **and** regenerate the Prisma client (see below).
+
+---
+
+## Prerequisites
+
+- **Node.js 20+** and npm
+- **Git**
+
+---
+
+## Setup and run (local)
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/PotatoWater17/Boba.js---SASEHack2026.git
+cd Boba.js---SASEHack2026
+npm install
+```
+
+### 2. Environment
+
+Copy the example env file:
+
+```bash
+cp .env.example .env
+```
+
+Default values work for local development:
+
+```env
+DATABASE_URL="file:./dev.db"
+SESSION_SECRET="generate-a-long-random-string"
+```
+
+`SESSION_SECRET` can be any long random string locally. **Required in production** for secure cookies.
+
+### 3. Database (first time or after schema changes)
+
+Apply the schema, generate the client, and load demo data:
+
+```bash
+npx prisma db push
+npx prisma generate
+npm run db:demo-full
+```
+
+`db:demo-full` resets the DB, seeds users/groups/chats, restores Ryan’s buddy list, syncs account snapshots, and backfills online/in-person tags.
+
+> **Important:** If you see errors like `Unknown argument isOnline`, the Prisma client is stale. Stop the dev server, run `npx prisma generate`, then start again.
+
+### 4. Start the app
+
+**Development** (hot reload):
+
+```bash
+npm run dev
+```
+
+Open **http://localhost:3000**
+
+**Production build** (optional):
+
+```bash
+npm run build
+npm start
+```
+
+### 5. Log in with a demo account
 
 | Who | Email | Password |
 |-----|-------|----------|
 | Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
 | Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
-| Dev / admin | `aidenb@auburn.edu` | `AidenB` |
-| Dev / admin | `bryanm@auburn.edu` | `BryanM` |
-| Dev / admin | `danielk@auburn.edu` | `DanielK` |
+| Dev team | `aidenb@`, `bryanm@`, `danielk@` `@auburn.edu` | `AidenB`, `BryanM`, `DanielK` |
 
-Cross-school users: `alex@`, `sam@`, `henry@`, `hailey@` — all `Password1!`. Meme accounts: `*.meme@auburn.edu` etc. — all `Password1!`.
+More accounts, DMs, and restore commands: **[DEMO-DATA.md](./DEMO-DATA.md)**
 
-## How to run
+---
 
-```bash
-npm install
-npm run db:demo-full   # reset DB + seed + Ryan buddies + account snapshot (see DEMO-DATA.md)
-npm run dev
-```
+## npm scripts (reference)
 
-Or step by step:
+| Script | What it does |
+|--------|----------------|
+| `npm run dev` | Dev server on port 3000 |
+| `npm run build` | Production build |
+| `npm run start` | Run production server |
+| `npm run lint` | ESLint |
+| `npm run db:push` | Apply Prisma schema to SQLite |
+| `npm run db:seed` | Seed demo data only |
+| `npm run db:demo-full` | Full demo reset (recommended for judges) |
+| `npm run db:restore-accounts` | Restore profiles from `accounts.snapshot.json` |
 
-```bash
-npm install
-npx prisma db push    # apply schema (includes isOnline on meetings)
-npm run db:seed
-npm run db:backfill-online   # optional if seed ran before isOnline existed
-npm run dev
-```
+---
 
-Then open http://localhost:3000
+## Optional: public dev URL (temporary)
 
-To refresh without wiping (keeps existing messages where possible):
+During the hackathon, a Cloudflare quick tunnel may be used so judges can try the app without cloning:
 
-```bash
-npm run db:restore-team
-npm run db:patch-demo
-npm run db:ryan-friends
-npm run db:restore-accounts  # sync profiles from prisma/accounts.snapshot.json
-npm run db:refresh-avatars   # optional — re-download profile photos
-```
+**https://lawn-guests-cologne-dancing.trycloudflare.com**
 
-After editing demo profiles locally, back them up for git:
+This only works while someone’s laptop is running both `npm run dev` and `cloudflared tunnel --url http://127.0.0.1:3000`. The URL changes when the tunnel restarts. For a reliable demo, run locally or deploy to a host (Vercel, Railway, etc.) with a real database and `SESSION_SECRET`.
 
-```bash
-npm run db:backup-accounts   # writes prisma/accounts.snapshot.json — commit this file
-```
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `Unknown argument …` from Prisma | Stop dev server → `npx prisma db push` → `npx prisma generate` → `npm run dev` |
+| `EPERM` on `prisma generate` (Windows) | Dev server is locking files — stop it first |
+| Empty app / no users | Run `npm run db:demo-full` |
+| Login fails after pull | Re-run `npx prisma generate` and restart dev server |
+
+---
+
+## Team
+
+Ryan · Aiden · Bryan · Daniel — Auburn University, SASEHack 2026
