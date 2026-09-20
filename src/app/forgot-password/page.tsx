@@ -21,6 +21,7 @@ export default async function ForgotPasswordPage({
       "If that email is registered, an admin will review your request and help reset your password.";
   }
   if (error === "fill") msg = "Enter your school email to request a password reset.";
+  if (error === "rate") msg = "Too many reset requests. Wait a while and try again.";
 
   return (
     <AuthPage

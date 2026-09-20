@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMe, prisma } from "@/lib";
+import { areFriends, getMe, isBlockedBetween, prisma } from "@/lib";
 import { normalizeReactionEmoji, packReactions } from "@/reactions";
 
 export async function POST(req: Request) {
@@ -15,6 +15,12 @@ export async function POST(req: Request) {
 
   const dm = await prisma.directMessage.findUnique({ where: { id: messageId } });
   if (!dm || dm.unsent || (dm.fromId !== me.id && dm.toId !== me.id)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (await isBlockedBetween(dm.fromId, dm.toId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!(await areFriends(dm.fromId, dm.toId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

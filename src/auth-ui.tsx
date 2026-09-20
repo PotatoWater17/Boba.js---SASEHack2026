@@ -1,13 +1,9 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { BrandLockup } from "@/brand-lockup";
 
 export function AuthBrandLockup() {
-  return (
-    <div className="nav-brand auth-brand-lockup">
-      <b>StudyBuddyBoard</b>
-      <span className="tagline">Fuel The Grind</span>
-    </div>
-  );
+  return <BrandLockup size="md" className="auth-brand-lockup" />;
 }
 
 export function AuthMascot() {

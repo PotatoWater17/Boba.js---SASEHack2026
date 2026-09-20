@@ -44,10 +44,6 @@ export function ChatReactions({
   }, []);
 
   useEffect(() => {
-    setReactions(initial);
-  }, [initial]);
-
-  useEffect(() => {
     if (!open || !btnRef.current) return;
 
     function updatePos() {

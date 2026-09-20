@@ -41,7 +41,7 @@ export function isImageMime(mime: string) {
 }
 
 export function safeFileName(name: string) {
-  return name.replace(/[/\\]/g, "").slice(0, 80) || "file";
+  return name.replace(/[/\\]/g, "").replace(/[\0-\x1f\x7f]/g, "").slice(0, 80) || "file";
 }
 
 export async function saveAttach(file: File) {

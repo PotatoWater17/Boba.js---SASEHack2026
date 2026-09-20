@@ -11,11 +11,13 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma db push --force-reset && prisma db seed",
     "db:restore-team": "tsx scripts/restore-team.ts",
+    "db:backup-accounts": "tsx scripts/backup-accounts.ts",
+    "db:restore-accounts": "tsx scripts/restore-accounts-backup.ts",
     "db:patch-demo": "tsx scripts/patch-demo-world.ts",
     "db:refresh-avatars": "tsx scripts/refresh-avatars.ts",
     "db:ryan-friends": "tsx scripts/seed-ryan-friends.ts",
     "db:meme-meetups": "tsx scripts/seed-meme-meetups.ts",
-    "db:demo-full": "npm run db:reset && npm run db:ryan-friends"
+    "db:demo-full": "npm run db:reset && npm run db:ryan-friends && npm run db:restore-accounts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

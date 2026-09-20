@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMe, prisma } from "@/lib";
+import { blockedUserIds, getMe, groupMessagePreview, prisma } from "@/lib";
 
 export async function GET() {
   const me = await getMe();
@@ -10,16 +10,14 @@ export async function GET() {
     );
   }
 
-  const friendNotices =
-    (await prisma.directMessage.count({
-      where: { toId: me.id, seen: false },
-    })) +
-    (await prisma.reactionNotice.count({
-      where: { userId: me.id, seen: false, dmId: { not: "" } },
-    }));
+  const blocked = await blockedUserIds(me.id);
 
   const unread = await prisma.directMessage.findMany({
-    where: { toId: me.id, seen: false },
+    where: {
+      toId: me.id,
+      seen: false,
+      ...(blocked.size ? { fromId: { notIn: [...blocked] } } : {}),
+    },
     include: {
       from: { select: { id: true, firstName: true, lastName: true, photoKey: true } },
     },
@@ -75,7 +73,7 @@ export async function GET() {
     unread: number;
   }[] = [];
   const seenDmReact = new Set<string>();
-  for (const note of reactUnread.filter((n) => n.dmId)) {
+  for (const note of reactUnread.filter((n) => n.dmId && !blocked.has(n.actorId))) {
     if (seenDmReact.has(note.actorId)) {
       const row = dmReacts.find((it) => it.actorId === note.actorId);
       if (row) row.unread += 1;
@@ -144,10 +142,10 @@ export async function GET() {
         msgId: msg.id,
         subject: msg.meeting.subject,
         fromId: msg.user.id,
-        firstName: msg.user.firstName,
-        lastName: msg.user.lastName,
-        photoKey: msg.user.photoKey,
-        preview: msg.unsent ? "Unsent" : msg.text || "New group message",
+        firstName: msg.authorRemoved ? "Removed user" : msg.user.firstName,
+        lastName: msg.authorRemoved ? "" : msg.user.lastName,
+        photoKey: msg.authorRemoved ? "" : msg.user.photoKey,
+        preview: groupMessagePreview(msg),
         unread: 1,
       });
     }
@@ -197,6 +195,8 @@ export async function GET() {
       unread: 1,
     });
   }
+
+  const friendNotices = dms.reduce((n, row) => n + row.unread, 0) + dmReacts.reduce((n, row) => n + row.unread, 0);
 
   return NextResponse.json({ dms, groups, dmReacts, groupReacts, friendNotices, groupNotices });
 }

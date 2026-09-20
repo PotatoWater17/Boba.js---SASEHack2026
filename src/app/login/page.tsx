@@ -7,16 +7,21 @@ import { getMe } from "@/lib";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; notice?: string }>;
 }) {
   const me = await getMe();
   if (me) redirect("/dashboard");
 
-  const { error } = await searchParams;
+  const { error, notice } = await searchParams;
   let msg: string | null = null;
+  let ok = false;
   if (error === "bad") msg = "Wrong email or password.";
-  if (error === "exists") msg = "That email is already signed up.";
+  if (error === "rate") msg = "Too many attempts. Wait a few minutes and try again.";
   if (error === "fill") msg = "Please fill out all fields.";
+  if (notice === "signup") {
+    ok = true;
+    msg = "Could not create an account with those details. Log in if you already have one, or try a different email.";
+  }
 
   return (
     <AuthPage
@@ -28,7 +33,7 @@ export default async function LoginPage({
         </p>
       }
     >
-      {msg ? <p className="err">{msg}</p> : null}
+      {msg ? <p className={ok ? "ok" : "err"}>{msg}</p> : null}
       <form action={login}>
         <label>
           School email
@@ -43,10 +48,6 @@ export default async function LoginPage({
         </button>
         <p className="auth-link-row">
           <Link href="/forgot-password">Forgot password?</Link>
-        </p>
-        <p className="auth-dev-hint">
-          Devs: ryanh@auburn.edu / RyanH · aidenb@auburn.edu / AidenB · bryanm@auburn.edu / BryanM ·
-          danielk@auburn.edu / DanielK
         </p>
       </form>
     </AuthPage>

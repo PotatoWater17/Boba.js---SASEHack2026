@@ -64,10 +64,12 @@ export function InviteBuddies({
   meetingId,
   buddies,
   pendingIds,
+  ownerOnly = false,
 }: {
   meetingId: string;
   buddies: Buddy[];
   pendingIds: string[];
+  ownerOnly?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
@@ -102,7 +104,9 @@ export function InviteBuddies({
     <div className="card" style={{ marginTop: 14 }}>
       <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
       <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 14 }}>
-        They&apos;ll get a chat invite and have to accept it.
+        {ownerOnly
+          ? "Private group — only you can invite people. They'll get a chat invite and have to accept it."
+          : "They'll get a chat invite and have to accept it."}
       </p>
       <input
         type="search"

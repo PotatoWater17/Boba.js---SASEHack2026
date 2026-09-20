@@ -18,7 +18,7 @@ export const DEFAULT_TOPICS = [
 
 export const COURSES = Object.keys(SUBJECT_TOPICS);
 
-export function searchCourses(query: string, limit = 40) {
+export function searchCourses(query: string, limit = 80) {
   const q = query.trim().toLowerCase();
   if (!q) return COURSES.slice(0, limit);
   const out: string[] = [];

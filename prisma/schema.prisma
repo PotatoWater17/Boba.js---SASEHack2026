@@ -28,9 +28,10 @@ model User {
   examTopics String    @default("")
   /// Preferred meetup style for exam prep, e.g. Exam review
   studyStyle String    @default("")
-  isAdmin    Boolean   @default(false)
-  showEmail  Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  isAdmin         Boolean   @default(false)
+  showEmail       Boolean   @default(false)
+  sessionVersion  Int       @default(0)
+  createdAt       DateTime  @default(now())
   members    Member[]
   messages   Message[]
   meetings   Meeting[] @relation("Host")
@@ -40,11 +41,25 @@ model User {
   dmsTo       DirectMessage[] @relation("DmTo")
   invitesFrom MeetupInvite[] @relation("InviteFrom")
   invitesTo   MeetupInvite[] @relation("InviteTo")
+  joinRequests MeetingJoinRequest[]
   dmReactions DmReaction[]
   messageReactions MessageReaction[]
   reactionNotices ReactionNotice[] @relation("NoticeTo")
   reactionActs    ReactionNotice[] @relation("NoticeFrom")
   passwordResets  PasswordResetRequest[]
+  blocksGiven     Block[] @relation("BlocksGiven")
+  blocksReceived  Block[] @relation("BlocksReceived")
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("BlocksGiven", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
 }
 
 model PasswordResetRequest {
@@ -74,13 +89,29 @@ model Meeting {
   /// partner | small | big
   groupKind  String    @default("small")
   /// e.g. Practice problems, Lecture / teach-back
-  style      String    @default("Practice problems")
-  hostId     String
-  createdAt  DateTime  @default(now())
-  host       User      @relation("Host", fields: [hostId], references: [id], onDelete: Cascade)
-  members    Member[]
-  messages   Message[]
-  invites    MeetupInvite[]
+  style            String    @default("Practice problems")
+  isPrivate        Boolean   @default(false)
+  requireApproval  Boolean   @default(false)
+  hostId           String
+  createdAt        DateTime  @default(now())
+  host             User      @relation("Host", fields: [hostId], references: [id], onDelete: Cascade)
+  members          Member[]
+  messages         Message[]
+  invites          MeetupInvite[]
+  joinRequests     MeetingJoinRequest[]
+}
+
+model MeetingJoinRequest {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  /// pending | declined
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
 }
 
 model Member {
@@ -126,12 +157,17 @@ model Message {
   id        String   @id @default(cuid())
   meetingId String
   userId    String
-  text      String
-  unsent    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reactions MessageReaction[]
+  text      String   @default("")
+  fileName  String   @default("")
+  fileKey   String   @default("")
+  fileMime  String   @default("")
+  unsent         Boolean  @default(false)
+  /// Set when the owner removes this member — chat shows "Removed user" instead of their name.
+  authorRemoved  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  meeting        Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions      MessageReaction[]
 }
 
 model DirectMessage {

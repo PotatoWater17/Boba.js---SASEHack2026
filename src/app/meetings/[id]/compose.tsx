@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { sendDm } from "@/app/actions";
+import { sendMessage } from "@/app/actions";
 import { blockEmptyChatSubmit } from "@/chat-form";
 import { ChatSendButton } from "@/chat-send-button";
 
-export function DmCompose({ userId }: { userId: string }) {
+export function GroupChatCompose({ meetingId }: { meetingId: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [pick, setPick] = useState(0);
@@ -54,8 +54,8 @@ export function DmCompose({ userId }: { userId: string }) {
 
   return (
     <>
-      <form action={sendDm} className="dm-form" onSubmit={blockEmptyChatSubmit}>
-        <input type="hidden" name="userId" value={userId} />
+      <form action={sendMessage} className="dm-form" onSubmit={blockEmptyChatSubmit}>
+        <input type="hidden" name="meetingId" value={meetingId} />
         {file ? (
           <div className="dm-preview">
             {preview ? (
@@ -72,7 +72,7 @@ export function DmCompose({ userId }: { userId: string }) {
           </div>
         ) : null}
         <div className="dm-compose">
-          <input className="field" name="text" placeholder="Type a message..." style={{ margin: 0, flex: 1 }} />
+          <input className="field" name="text" placeholder="Type a chat..." style={{ margin: 0, flex: 1 }} />
           <label className="pill dm-attach">
             Attach
             <input

@@ -5,6 +5,7 @@ import { logout } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { isUserAdmin } from "@/admin";
 import { getMe, prisma } from "@/lib";
+import { BrandLockup } from "@/brand-lockup";
 import { NavLinks } from "@/nav";
 import { NavHeightSync } from "@/nav-height";
 import { ThemeInit, ThemeToggle } from "@/theme";
@@ -65,8 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="nav">
           <div className="nav-bar">
             <Link href="/" className="nav-brand">
-              <b>StudyBuddyBoard</b>
-              <span className="tagline">Fuel The Grind</span>
+              <BrandLockup size="sm" />
             </Link>
             <div className="nav-actions">
               <ThemeToggle />

@@ -1,6 +1,7 @@
 # Demo data reference
 
 **Source of truth:** `prisma/seed.ts` (full wipe + recreate).  
+**Account profiles (git backup):** `prisma/accounts.snapshot.json` — all 51 live demo users + friendships.  
 **Non-destructive add-ons:** `scripts/patch-demo-world.ts`, `scripts/seed-ryan-friends.ts`, `scripts/restore-team.ts`.
 
 Use this doc to restore demo profiles, friendships, DMs, and group chats after schema changes or accidental DB edits.
@@ -15,7 +16,7 @@ Use this doc to restore demo profiles, friendships, DMs, and group chats after s
 npm run db:demo-full
 ```
 
-Runs `db:reset` (schema + seed) then `db:ryan-friends` (Ryan’s extended buddy list + extra DMs).
+Runs `db:reset` (schema + seed), `db:ryan-friends` (Ryan’s buddy list + DMs), then `db:restore-accounts` (sync profiles from `prisma/accounts.snapshot.json`).
 
 Optional — re-download profile photos (needs network):
 
@@ -262,7 +263,9 @@ Seed also creates **15 additional meetings** (`EXTRA` array in `seed.ts`) hosted
 |--------|----------------|
 | `db:reset` | `prisma db push --force-reset` + `prisma db seed` — **wipes all users, chats, meetups** |
 | `db:seed` | Run seed only (no schema reset) |
-| `db:demo-full` | `db:reset` + `db:ryan-friends` — **full demo in one command** |
+| `db:demo-full` | `db:reset` + `db:ryan-friends` + `db:restore-accounts` — **full demo in one command** |
+| `db:backup-accounts` | Export live DB users → `prisma/accounts.snapshot.json` (commit to git) |
+| `db:restore-accounts` | Upsert users + friendships from `prisma/accounts.snapshot.json` (idempotent) |
 | `db:restore-team` | Upsert 4 dev accounts + mutual friendships (no wipe) |
 | `db:patch-demo` | Fix universities, exam fields, dev/cross-school meetups, dev DMs (idempotent) |
 | `db:ryan-friends` | Ryan’s extended buddies + Ryan-specific DMs (idempotent) |
@@ -271,12 +274,25 @@ Seed also creates **15 additional meetings** (`EXTRA` array in `seed.ts`) hosted
 
 ---
 
+## Extra demo accounts (in snapshot)
+
+These are not in `seed.ts` but are restored from **`prisma/accounts.snapshot.json`**:
+
+| Email | Password | Name | University |
+|-------|----------|------|------------|
+| `spiderman@esu.edu` | `Password1!` | Spider-Man | Stark University |
+| `marlon@streamer.edu` | `Password1!` | Marlon Garcia | Streamer University |
+| `messi@intermiami.org` | `Password1!` | Lionel Messi | FC Barcelona |
+| `cr7@alnassr.org` | `Password1!` | Cristiano Ronaldo | Al Nassr |
+
+---
+
 ## Editing demo data
 
-1. Change **`prisma/seed.ts`** for anything that should survive `db:reset`.
-2. Change **`scripts/seed-ryan-friends.ts`** for Ryan-only buddy/DM extras.
-3. Change **`scripts/patch-demo-world.ts`** for idempotent patches on live DBs.
-4. Change **`scripts/restore-team.ts`** for dev account field defaults.
+1. Edit profiles in the app (or DB), then run **`npm run db:backup-accounts`** and commit **`prisma/accounts.snapshot.json`**.
+2. Change **`prisma/seed.ts`** for meetups, DMs, and base structure on `db:reset`.
+3. Change **`scripts/seed-ryan-friends.ts`** for Ryan-only buddy/DM extras.
+4. Change **`scripts/patch-demo-world.ts`** for idempotent patches on live DBs.
 5. Update **this file** when adding accounts or chat content so the team can restore.
 
-**Do not** rely on manual DB edits alone — they are lost on `db:reset`.
+**Do not** rely on manual DB edits alone — run `db:backup-accounts` and commit the snapshot so GitHub/demo clones get the same users.

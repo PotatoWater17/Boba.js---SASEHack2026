@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getMe, PAGE_SIZE } from "@/lib";
+import { getMe } from "@/lib";
 
 export default async function FindPage() {
   const me = await getMe();
@@ -10,13 +10,7 @@ export default async function FindPage() {
     <div className="page motion-page-enter">
       <header className="page-header" style={{ textAlign: "center" }}>
         <h1 className="page-title">Find Study Buddies</h1>
-        <p>
-          Groups are sorted by your profile preferences first (classes you need help in / can help with),
-          then we show {PAGE_SIZE} at a time. Browse starts at your university.{" "}
-          <Link href="/find/buddies" style={{ textDecoration: "underline" }}>
-            Match with a person for exam prep
-          </Link>
-        </p>
+        <p>Browse study groups or find a buddy for exam prep.</p>
       </header>
 
       <div className="find-hub">
@@ -26,7 +20,7 @@ export default async function FindPage() {
           style={{ ["--motion-delay" as string]: "0ms" }}
         >
           <b>Find Your Buddies</b>
-          <span>Add your exam course, date, and topics — we&apos;ll match you with the best prep buddies.</span>
+          <span>Pick a subject and topics to focus on — we&apos;ll match you with the best prep buddies.</span>
         </Link>
         <Link
           className="btn find-hub-btn motion-stagger-item"

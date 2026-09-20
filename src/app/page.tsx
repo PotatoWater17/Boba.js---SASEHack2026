@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { BrandLockup } from "@/brand-lockup";
 import { AboutSections } from "./about-sections";
 import { getMe } from "@/lib";
 
@@ -33,10 +34,7 @@ export default async function IntroPage() {
             />
             <div>
               <p className="eyebrow motion-hero-item motion-hero-d2">Built for college students</p>
-              <div className="brand-lockup motion-hero-item motion-hero-d3">
-                <h1 className="page-title brand-name">StudyBuddyBoard</h1>
-                <p className="tagline">Fuel The Grind</p>
-              </div>
+              <BrandLockup size="lg" titleAs="h1" className="motion-hero-item motion-hero-d3" />
               <p className="about-hero-copy motion-hero-item motion-hero-d4">
                 Stop cramming alone before exams. <span className="brand-name">StudyBuddyBoard</span> helps you find
                 students like you who are also looking to prepare, plan out the study group, and stay connected!

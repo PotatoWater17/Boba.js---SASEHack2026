@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { acceptFriend, removeFriend } from "@/app/actions";
 import { Avatar } from "@/avatar";
-import { getMe, prisma, timeAgo } from "@/lib";
+import { blockedUserIds, getMe, prisma, timeAgo } from "@/lib";
 import { PeopleSearch } from "./search";
 
 const FILTERS = [
@@ -16,12 +16,13 @@ const FILTERS = [
 export default async function FriendsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; error?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
-  const { q: qRaw, filter: filterRaw } = await searchParams;
+  const { q: qRaw, filter: filterRaw, error } = await searchParams;
+  const blocked = await blockedUserIds(me.id);
   const q = (qRaw || "").trim().toLowerCase();
   const filter = FILTERS.some((f) => f.id === filterRaw) ? filterRaw || "" : "";
 
@@ -30,10 +31,13 @@ export default async function FriendsPage({
     include: { from: true, to: true },
     orderBy: { createdAt: "desc" },
   });
-  const incoming = friendRows.filter((row) => row.status === "pending" && row.toId === me.id);
+  const incoming = friendRows.filter(
+    (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
+  );
   const friends = friendRows
     .filter((row) => row.status === "accepted")
-    .map((row) => (row.fromId === me.id ? row.to : row.from));
+    .map((row) => (row.fromId === me.id ? row.to : row.from))
+    .filter((u) => !blocked.has(u.id));
 
   const dms = await prisma.directMessage.findMany({
     where: { OR: [{ fromId: me.id }, { toId: me.id }] },
@@ -65,6 +69,7 @@ export default async function FriendsPage({
       return { friend, last, unread };
     })
     .filter(({ friend, last, unread }) => {
+      if (blocked.has(friend.id)) return false;
       const name = `${friend.firstName} ${friend.lastName}`.toLowerCase();
       if (q && !name.includes(q)) return false;
       if (filter === "unread") return unread > 0;
@@ -95,6 +100,8 @@ export default async function FriendsPage({
       <header className="page-header" style={{ textAlign: "center" }}>
         <h1 className="page-title">Buddies</h1>
       </header>
+
+      {error === "blocked" ? <p className="err">You can&apos;t message that user.</p> : null}
 
       <div className="chat-search">
         <form method="get" className="chat-search-form">

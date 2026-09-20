@@ -1,12 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-import { createHash } from "crypto";
+import { hashPassword } from "../src/auth";
 import { nextAccountNo } from "../src/account-id";
 
 const prisma = new PrismaClient();
-
-function hash(pw: string) {
-  return createHash("sha256").update(pw).digest("hex");
-}
 
 const DEVS = [
   {
@@ -58,7 +54,7 @@ const DEVS = [
 async function ensureDev(dev: (typeof DEVS)[number]) {
   const existing = await prisma.user.findUnique({ where: { email: dev.email } });
   const data = {
-    password: hash(dev.password),
+    password: hashPassword(dev.password),
     firstName: dev.firstName,
     lastName: dev.lastName,
     year: dev.year,

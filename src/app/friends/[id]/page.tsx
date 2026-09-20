@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { Avatar } from "@/avatar";
 import { isImageMime } from "@/files";
 import { ChatReactions } from "@/chat-reactions";
-import { getMe, prisma, timeAgo } from "@/lib";
+import { CopyMessageButton } from "@/copy-message-btn";
+import { messageCopyText } from "@/message-copy";
+import { getMe, isBlockedBetween, prisma, timeAgo } from "@/lib";
 import { packReactions } from "@/reactions";
 import { unsendDm } from "@/app/actions";
 import { DmCompose } from "./compose";
@@ -26,6 +28,18 @@ export default async function FriendChatPage({
   const { error } = await searchParams;
   const friend = await prisma.user.findUnique({ where: { id } });
   if (!friend || friend.id === me.id) notFound();
+  if (await isBlockedBetween(me.id, friend.id)) redirect("/friends?error=blocked");
+
+  const bond = await prisma.friendship.findFirst({
+    where: {
+      status: "accepted",
+      OR: [
+        { fromId: me.id, toId: friend.id },
+        { fromId: friend.id, toId: me.id },
+      ],
+    },
+  });
+  if (!bond) notFound();
 
   const messages = await prisma.directMessage.findMany({
     where: {
@@ -74,26 +88,33 @@ export default async function FriendChatPage({
       {error === "size" ? <p className="err">Keep attachments under 8 MB.</p> : null}
       {error === "empty" ? <p className="err">Type a message or attach a file.</p> : null}
       {error === "full" ? <p className="err">That meetup is full.</p> : null}
+      {error === "blocked" ? <p className="err">You can&apos;t message this user.</p> : null}
 
       <div className="card">
-        <DmThread>
+        <DmThread messageCount={messages.length}>
           {messages.length === 0 ? (
             <p className="text-muted" style={{ margin: 0 }}>No messages yet. Say hi.</p>
           ) : (
             messages.map((msg) => {
               const invite = msg.inviteId ? inviteMap.get(msg.inviteId) : null;
+              const copyText = !msg.unsent && !invite ? messageCopyText(msg) : "";
               return (
                 <div key={msg.id} className={`dm-bubble${msg.fromId === me.id ? " mine" : ""}`}>
                   <div className="dm-bubble-meta">
                     {msg.from.firstName} · {timeAgo(msg.createdAt)}
-                    {msg.fromId === me.id && !msg.unsent ? (
-                      <form action={unsendDm} className="dm-unsend-form">
-                        <input type="hidden" name="messageId" value={msg.id} />
-                        <input type="hidden" name="userId" value={friend.id} />
-                        <button type="submit" className="dm-unsend-btn">
-                          Unsend
-                        </button>
-                      </form>
+                    {!msg.unsent && (copyText || (msg.fromId === me.id && !invite)) ? (
+                      <div className="dm-bubble-actions">
+                        {copyText ? <CopyMessageButton text={copyText} /> : null}
+                        {msg.fromId === me.id && !invite ? (
+                          <form action={unsendDm} className="dm-unsend-form">
+                            <input type="hidden" name="messageId" value={msg.id} />
+                            <input type="hidden" name="userId" value={friend.id} />
+                            <button type="submit" className="dm-unsend-btn">
+                              Unsend
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                   {msg.unsent ? (
@@ -103,7 +124,7 @@ export default async function FriendChatPage({
                       {invite ? (
                         <InviteCard invite={invite} mine={msg.fromId === me.id} />
                       ) : msg.text ? (
-                        <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
+                        <div className="dm-text">{msg.text}</div>
                       ) : null}
                       {msg.fileKey ? (
                         isImageMime(msg.fileMime) ? (

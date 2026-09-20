@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { acceptFriend, removeFriend } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { DashCalendar } from "./calendar";
-import { formatMeetDate, getMe, prisma, ymd } from "@/lib";
+import { blockedUserIds, formatMeetDate, getMe, prisma, ymd } from "@/lib";
 
 function calHref(year: number, month: number) {
   const d = new Date(year, month, 1);
@@ -41,6 +41,7 @@ export default async function DashboardPage({
   const weekEnd = ymd(weekEndDate);
   const thisWeek = upcoming.filter((m) => m.meetDate && m.meetDate <= weekEnd);
 
+  const blocked = await blockedUserIds(me.id);
   const friendRows = await prisma.friendship.findMany({
     where: {
       OR: [{ fromId: me.id }, { toId: me.id }],
@@ -50,8 +51,11 @@ export default async function DashboardPage({
   });
   const friends = friendRows
     .filter((row) => row.status === "accepted")
-    .map((row) => (row.fromId === me.id ? row.to : row.from));
-  const incoming = friendRows.filter((row) => row.status === "pending" && row.toId === me.id);
+    .map((row) => (row.fromId === me.id ? row.to : row.from))
+    .filter((u) => !blocked.has(u.id));
+  const incoming = friendRows.filter(
+    (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
+  );
 
   const friendIds = friends.map((f) => f.id);
   const interactionScore = new Map<string, number>();

@@ -7,17 +7,26 @@ import { getAdmin } from "@/admin";
 import { removeAttach, saveAttach, saveAvatar, removeAvatar } from "@/files";
 import { resolveUniversity } from "@/universities";
 import { resolveMajor } from "@/majors";
+import { purgeMeeting, removeMeetingIfEmpty } from "@/meeting-cleanup";
+import { addMeetingMemberIfRoom } from "@/meeting-members";
+import { clientIp, rateLimit } from "@/rate-limit";
 import {
+  blockedByMe,
+  blockedUserIds,
   clearUser,
   formatTimeInput,
   getMe,
   hashPassword,
+  isBlockedBetween,
   isStrongPassword,
   isValidMeetDate,
+  needsPasswordUpgrade,
   parseDateField,
   prisma,
+  safeNextPath,
   setUser,
   splitList,
+  verifyPassword,
 } from "@/lib";
 
 export async function signup(formData: FormData) {
@@ -37,7 +46,7 @@ export async function signup(formData: FormData) {
   if (!isStrongPassword(password)) redirect("/signup?error=weak");
 
   const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) redirect("/signup?error=exists");
+  if (exists) redirect("/login?notice=signup");
 
   const accountNo = await nextAccountNo();
   const user = await prisma.user.create({
@@ -51,7 +60,7 @@ export async function signup(formData: FormData) {
     },
   });
 
-  await setUser(user.id);
+  await setUser(user.id, user.sessionVersion);
   redirect("/dashboard");
 }
 
@@ -61,12 +70,28 @@ export async function login(formData: FormData) {
     .toLowerCase();
   const password = String(formData.get("password") || "");
 
+  const ip = await clientIp();
+  const ipLimit = rateLimit(`login:ip:${ip}`, 30, 15 * 60 * 1000);
+  if (!ipLimit.ok) redirect("/login?error=rate");
+  if (email) {
+    const emailLimit = rateLimit(`login:email:${email}`, 10, 15 * 60 * 1000);
+    if (!emailLimit.ok) redirect("/login?error=rate");
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || user.password !== hashPassword(password)) {
+  if (!user || !verifyPassword(password, user.password)) {
     redirect("/login?error=bad");
   }
 
-  await setUser(user.id);
+  if (needsPasswordUpgrade(user.password)) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashPassword(password) },
+    });
+  }
+
+  const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+  await setUser(user.id, fresh?.sessionVersion ?? 0);
   redirect("/dashboard");
 }
 
@@ -84,15 +109,16 @@ export async function changePassword(formData: FormData) {
   const confirm = String(formData.get("confirmPassword") || "");
 
   if (!current || !next || !confirm) redirect(`/profile/${me.id}?edit=1&error=pwfill`);
-  if (me.password !== hashPassword(current)) redirect(`/profile/${me.id}?edit=1&error=pwbad`);
+  if (!verifyPassword(current, me.password)) redirect(`/profile/${me.id}?edit=1&error=pwbad`);
   if (next !== confirm) redirect(`/profile/${me.id}?edit=1&error=pwmatch`);
   if (!isStrongPassword(next)) redirect(`/profile/${me.id}?edit=1&error=pwweak`);
 
-  await prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: me.id },
-    data: { password: hashPassword(next) },
+    data: { password: hashPassword(next), sessionVersion: { increment: 1 } },
   });
 
+  await setUser(updated.id, updated.sessionVersion);
   redirect(`/profile/${me.id}?edit=1&pw=changed`);
 }
 
@@ -106,16 +132,24 @@ export async function requestPasswordReset(formData: FormData) {
 
   if (!email) redirect("/forgot-password?error=fill");
 
+  const ip = await clientIp();
+  const ipLimit = rateLimit(`reset:ip:${ip}`, 8, 60 * 60 * 1000);
+  if (!ipLimit.ok) redirect("/forgot-password?error=rate");
+  const emailLimit = rateLimit(`reset:email:${email}`, 3, 60 * 60 * 1000);
+  if (!emailLimit.ok) redirect("/forgot-password?error=rate");
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (user) {
     const existing = await prisma.passwordResetRequest.findFirst({
       where: { userId: user.id, status: "pending" },
     });
     if (existing) {
-      await prisma.passwordResetRequest.update({
-        where: { id: existing.id },
-        data: { note: note || existing.note, createdAt: new Date() },
-      });
+      if (note && note !== existing.note) {
+        await prisma.passwordResetRequest.update({
+          where: { id: existing.id },
+          data: { note },
+        });
+      }
     } else {
       await prisma.passwordResetRequest.create({
         data: { userId: user.id, note },
@@ -143,7 +177,7 @@ export async function adminResetPassword(formData: FormData) {
 
   await prisma.user.update({
     where: { id: req.userId },
-    data: { password: hashPassword(newPassword) },
+    data: { password: hashPassword(newPassword), sessionVersion: { increment: 1 } },
   });
   await prisma.passwordResetRequest.update({
     where: { id: requestId },
@@ -206,15 +240,15 @@ export async function updateProfile(formData: FormData) {
     await prisma.user.update({
       where: { id: me.id },
       data: {
-        firstName: profileText(formData.get("firstName"), me.firstName),
-        lastName: profileText(formData.get("lastName"), me.lastName),
-        pronouns: profileText(formData.get("pronouns")),
-        year: profileText(formData.get("year")),
-        major: resolveMajor(profileText(formData.get("major"))),
+        firstName: profileText(formData.get("firstName"), me.firstName, 60),
+        lastName: profileText(formData.get("lastName"), me.lastName, 60),
+        pronouns: profileText(formData.get("pronouns"), "", 40),
+        year: profileText(formData.get("year"), "", 40),
+        major: resolveMajor(profileText(formData.get("major"), "", 80)),
         university,
         bio: profileText(formData.get("bio"), "", 400),
-        needHelp: profileText(formData.get("needHelp")),
-        canHelp: profileText(formData.get("canHelp")),
+        needHelp: profileText(formData.get("needHelp"), "", 200),
+        canHelp: profileText(formData.get("canHelp"), "", 200),
         examCourse: resolveCourse(profileText(formData.get("examCourse"))),
         examDate: parseDateField(profileText(formData.get("examDate"))),
         examTopics: profileText(formData.get("examTopics"), "", 300),
@@ -271,6 +305,9 @@ export async function createMeeting(
     return { error: `For ${kind.label}, size must be ${kind.min === kind.max ? kind.min : `${kind.min}–${kind.max}`}.` };
   }
 
+  const isPrivate = formData.get("isPrivate") === "1";
+  const requireApproval = isPrivate ? false : formData.get("requireApproval") === "1";
+
   const meeting = await prisma.meeting.create({
     data: {
       subject,
@@ -283,6 +320,8 @@ export async function createMeeting(
       maxSize,
       groupKind: kind.id,
       style,
+      isPrivate,
+      requireApproval,
       hostId: me.id,
       members: { create: [{ userId: me.id }] },
     },
@@ -360,6 +399,9 @@ export async function updateMeeting(
       maxSize,
       groupKind: kind.id,
       style,
+      isPrivate: formData.get("isPrivate") === "1",
+      requireApproval:
+        formData.get("isPrivate") === "1" ? false : formData.get("requireApproval") === "1",
     },
   });
 
@@ -371,15 +413,73 @@ export async function joinMeeting(formData: FormData) {
   if (!me) redirect("/login");
 
   const meetingId = String(formData.get("meetingId") || "");
+  const next = safeNextPath(String(formData.get("next") || ""), `/meetings/${meetingId}`);
   const meeting = await prisma.meeting.findUnique({
     where: { id: meetingId },
     include: { members: true },
   });
   if (!meeting) redirect("/find");
-  if (meeting.members.length >= meeting.maxSize) redirect(`/meetings/${meetingId}?error=full`);
-  if (meeting.members.some((m) => m.userId === me.id)) redirect(`/meetings/${meetingId}`);
+  if (meeting.members.some((m) => m.userId === me.id)) redirect(next);
+  if (meeting.isPrivate) redirect(`${next}?error=private`);
 
-  await prisma.member.create({ data: { meetingId, userId: me.id } });
+  if (meeting.requireApproval) {
+    if (meeting.members.length >= meeting.maxSize) redirect(`${next}?error=full`);
+    const existing = await prisma.meetingJoinRequest.findUnique({
+      where: { meetingId_userId: { meetingId, userId: me.id } },
+    });
+    if (existing?.status === "pending") redirect(`${next}?notice=pending`);
+    await prisma.meetingJoinRequest.upsert({
+      where: { meetingId_userId: { meetingId, userId: me.id } },
+      create: { meetingId, userId: me.id, status: "pending" },
+      update: { status: "pending" },
+    });
+    redirect(`${next}?notice=requested`);
+  }
+
+  const result = await addMeetingMemberIfRoom(meetingId, me.id);
+  if (result === "missing") redirect("/find");
+  if (result === "full") redirect(`${next}?error=full`);
+  redirect(next);
+}
+
+export async function approveJoinRequest(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const requestId = String(formData.get("requestId") || "");
+  const meetingId = String(formData.get("meetingId") || "");
+  const req = await prisma.meetingJoinRequest.findUnique({
+    where: { id: requestId },
+    include: { meeting: { include: { members: true } } },
+  });
+  if (!req || req.meetingId !== meetingId || req.status !== "pending") redirect(`/meetings/${meetingId}`);
+  if (req.meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+
+  const result = await addMeetingMemberIfRoom(meetingId, req.userId);
+  if (result === "full") {
+    await prisma.meetingJoinRequest.update({ where: { id: requestId }, data: { status: "declined" } });
+    redirect(`/meetings/${meetingId}?error=full`);
+  }
+  if (result === "joined" || result === "member") {
+    await prisma.meetingJoinRequest.delete({ where: { id: requestId } });
+  }
+  redirect(`/meetings/${meetingId}`);
+}
+
+export async function declineJoinRequest(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const requestId = String(formData.get("requestId") || "");
+  const meetingId = String(formData.get("meetingId") || "");
+  const req = await prisma.meetingJoinRequest.findUnique({
+    where: { id: requestId },
+    include: { meeting: true },
+  });
+  if (!req || req.meetingId !== meetingId || req.status !== "pending") redirect(`/meetings/${meetingId}`);
+  if (req.meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+
+  await prisma.meetingJoinRequest.update({ where: { id: requestId }, data: { status: "declined" } });
   redirect(`/meetings/${meetingId}`);
 }
 
@@ -388,8 +488,67 @@ export async function leaveMeeting(formData: FormData) {
   if (!me) redirect("/login");
 
   const meetingId = String(formData.get("meetingId") || "");
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: meetingId },
+    include: { members: { select: { userId: true } } },
+  });
+  if (!meeting) redirect("/groups");
+
+  const isOwner = meeting.hostId === me.id;
+  const isOnlyMember = meeting.members.length === 1 && meeting.members[0]?.userId === me.id;
+  if (isOwner && !isOnlyMember) redirect(`/meetings/${meetingId}?error=owner`);
+
   await prisma.member.deleteMany({ where: { meetingId, userId: me.id } });
-  redirect("/groups");
+  await prisma.meetingJoinRequest.deleteMany({ where: { meetingId, userId: me.id } });
+
+  const deleted = await removeMeetingIfEmpty(meetingId);
+  redirect(deleted ? "/groups?notice=deleted" : "/groups");
+}
+
+export async function deleteMeeting(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const meetingId = String(formData.get("meetingId") || "");
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: meetingId },
+    select: { hostId: true },
+  });
+  if (!meeting) redirect("/groups");
+  if (meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+
+  await purgeMeeting(meetingId);
+  redirect("/groups?notice=deleted");
+}
+
+export async function removeMeetingMember(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const meetingId = String(formData.get("meetingId") || "");
+  const userId = String(formData.get("userId") || "");
+  if (!meetingId || !userId) redirect("/groups");
+
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: meetingId },
+    include: { members: { select: { userId: true } } },
+  });
+  if (!meeting) redirect("/groups");
+  if (meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+  if (userId === me.id) redirect(`/meetings/${meetingId}`);
+  if (!meeting.members.some((m) => m.userId === userId)) redirect(`/meetings/${meetingId}`);
+
+  await prisma.$transaction([
+    prisma.member.deleteMany({ where: { meetingId, userId } }),
+    prisma.message.updateMany({
+      where: { meetingId, userId },
+      data: { authorRemoved: true },
+    }),
+    prisma.meetingJoinRequest.deleteMany({ where: { meetingId, userId } }),
+    prisma.meetupInvite.deleteMany({ where: { meetingId, toId: userId } }),
+  ]);
+
+  redirect(`/meetings/${meetingId}?notice=member-removed`);
 }
 
 export async function sendMessage(formData: FormData) {
@@ -397,15 +556,33 @@ export async function sendMessage(formData: FormData) {
   if (!me) redirect("/login");
 
   const meetingId = String(formData.get("meetingId") || "");
-  const text = String(formData.get("text") || "").trim();
-  if (!text) redirect(`/meetings/${meetingId}`);
+  const text = String(formData.get("text") || "").trim().slice(0, 500);
+  if (!meetingId) redirect("/groups");
 
   const member = await prisma.member.findUnique({
     where: { meetingId_userId: { meetingId, userId: me.id } },
   });
   if (!member) redirect(`/meetings/${meetingId}?error=join`);
 
-  await prisma.message.create({ data: { meetingId, userId: me.id, text } });
+  const raw = formData.get("file");
+  const file = raw instanceof File && raw.size > 0 ? raw : null;
+  let fileName = "";
+  let fileKey = "";
+  let fileMime = "";
+
+  if (file) {
+    const saved = await saveAttach(file);
+    if ("error" in saved) redirect(`/meetings/${meetingId}?error=${saved.error}`);
+    fileName = saved.name;
+    fileKey = saved.key;
+    fileMime = saved.mime;
+  }
+
+  if (!text && !fileKey) redirect(`/meetings/${meetingId}?error=empty`);
+
+  await prisma.message.create({
+    data: { meetingId, userId: me.id, text, fileName, fileKey, fileMime },
+  });
   await prisma.member.update({
     where: { meetingId_userId: { meetingId, userId: me.id } },
     data: { lastReadAt: new Date() },
@@ -432,7 +609,7 @@ export async function inviteToMeetup(formData: FormData) {
 
   const meetingId = String(formData.get("meetingId") || "");
   const userId = String(formData.get("userId") || "");
-  const next = nextPath(formData, meetingId ? `/meetings/${meetingId}` : "/groups");
+  const next = safeNextPath(String(formData.get("next") || ""), meetingId ? `/meetings/${meetingId}` : "/groups");
   if (!meetingId || !userId || userId === me.id) redirect(next);
 
   const meeting = await prisma.meeting.findUnique({
@@ -441,8 +618,11 @@ export async function inviteToMeetup(formData: FormData) {
   });
   if (!meeting) redirect("/groups");
   if (!meeting.members.some((m) => m.userId === me.id)) redirect(next);
+  if (meeting.isPrivate && meeting.hostId !== me.id) redirect(next);
   if (meeting.members.some((m) => m.userId === userId)) redirect(next);
   if (meeting.members.length >= meeting.maxSize) redirect(`/meetings/${meetingId}?error=full`);
+
+  if (await isBlockedBetween(me.id, userId)) redirect(next);
 
   const bond = await friendshipBetween(me.id, userId);
   if (!bond || bond.status !== "accepted") redirect(next);
@@ -488,16 +668,16 @@ export async function acceptMeetupInvite(formData: FormData) {
   });
   if (!invite || invite.toId !== me.id) redirect("/friends");
   if (invite.status !== "pending") redirect(`/friends/${invite.fromId}`);
+  if (await isBlockedBetween(me.id, invite.fromId)) redirect(`/friends/${invite.fromId}?error=blocked`);
 
   const meeting = invite.meeting;
-  if (meeting.members.length >= meeting.maxSize) {
+  const joinResult = await addMeetingMemberIfRoom(meeting.id, me.id);
+  if (joinResult === "full") {
     await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "declined" } });
     redirect(`/friends/${invite.fromId}?error=full`);
   }
+  if (joinResult === "missing") redirect("/friends");
 
-  if (!meeting.members.some((m) => m.userId === me.id)) {
-    await prisma.member.create({ data: { meetingId: meeting.id, userId: me.id } });
-  }
   await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "accepted" } });
 
   await prisma.directMessage.create({
@@ -544,21 +724,17 @@ async function friendshipBetween(a: string, b: string) {
   });
 }
 
-function nextPath(formData: FormData, fallback: string) {
-  const next = String(formData.get("next") || "") || fallback;
-  return next.startsWith("/") && !next.startsWith("//") ? next : fallback;
-}
-
 export async function addFriend(formData: FormData) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  const next = nextPath(formData, userId ? `/profile/${userId}` : "/dashboard");
+  const next = safeNextPath(String(formData.get("next") || ""), userId ? `/profile/${userId}` : "/dashboard");
   if (!userId || userId === me.id) redirect(next);
 
   const other = await prisma.user.findUnique({ where: { id: userId } });
   if (!other) redirect(next);
+  if (await isBlockedBetween(me.id, userId)) redirect(`${next}${next.includes("?") ? "&" : "?"}error=blocked`);
 
   const existing = await friendshipBetween(me.id, userId);
   if (existing?.status === "accepted") redirect(next);
@@ -577,7 +753,8 @@ export async function acceptFriend(formData: FormData) {
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  const next = nextPath(formData, userId ? `/profile/${userId}` : "/dashboard");
+  const next = safeNextPath(String(formData.get("next") || ""), userId ? `/profile/${userId}` : "/dashboard");
+  if (await isBlockedBetween(me.id, userId)) redirect(`${next}${next.includes("?") ? "&" : "?"}error=blocked`);
   const existing = await friendshipBetween(me.id, userId);
   if (existing && existing.toId === me.id && existing.status === "pending") {
     await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
@@ -595,6 +772,10 @@ export async function sendDm(formData: FormData) {
 
   const other = await prisma.user.findUnique({ where: { id: userId } });
   if (!other || other.id === me.id) redirect("/friends");
+  if (await isBlockedBetween(me.id, userId)) redirect(`/friends/${userId}?error=blocked`);
+
+  const bond = await friendshipBetween(me.id, userId);
+  if (!bond || bond.status !== "accepted") redirect(`/friends/${userId}?error=buddy`);
 
   const raw = formData.get("file");
   const file = raw instanceof File && raw.size > 0 ? raw : null;
@@ -667,7 +848,7 @@ export async function removeFriend(formData: FormData) {
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  const next = String(formData.get("next") || "") || `/profile/${userId}`;
+  const next = safeNextPath(String(formData.get("next") || ""), `/profile/${userId}`);
   await prisma.friendship.deleteMany({
     where: {
       OR: [
@@ -676,7 +857,56 @@ export async function removeFriend(formData: FormData) {
       ],
     },
   });
-  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+  redirect(next);
+}
+
+export async function blockUser(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = safeNextPath(String(formData.get("next") || ""), `/profile/${userId}`);
+  if (!userId || userId === me.id) redirect(next);
+
+  await prisma.friendship.deleteMany({
+    where: {
+      OR: [
+        { fromId: me.id, toId: userId },
+        { fromId: userId, toId: me.id },
+      ],
+    },
+  });
+  await prisma.meetupInvite.deleteMany({
+    where: {
+      status: "pending",
+      OR: [
+        { fromId: me.id, toId: userId },
+        { fromId: userId, toId: me.id },
+      ],
+    },
+  });
+  await prisma.block.upsert({
+    where: { blockerId_blockedId: { blockerId: me.id, blockedId: userId } },
+    create: { blockerId: me.id, blockedId: userId },
+    update: {},
+  });
+  const dest = next.startsWith(`/profile/${userId}`) ? `/profile/${userId}?blocked=1` : next;
+  redirect(dest);
+}
+
+export async function unblockUser(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = safeNextPath(String(formData.get("next") || ""), `/profile/${userId}`);
+  if (!userId || userId === me.id) redirect(next);
+  if (!(await blockedByMe(me.id, userId))) redirect(next);
+
+  await prisma.block.delete({
+    where: { blockerId_blockedId: { blockerId: me.id, blockedId: userId } },
+  });
+  redirect(next);
 }
 
 export type PeopleHit = {
@@ -711,6 +941,7 @@ export async function searchPeople(_prev: { results: PeopleHit[]; ran: boolean }
       firstName: true,
       lastName: true,
       email: true,
+      showEmail: true,
       university: true,
       year: true,
       major: true,
@@ -719,9 +950,16 @@ export async function searchPeople(_prev: { results: PeopleHit[]; ran: boolean }
     take: 80,
   });
 
-  const filtered = q
-    ? users.filter((u) => `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(q))
-    : users;
+  const blocked = await blockedUserIds(me.id);
+  const filtered = (q
+    ? users.filter((u) => {
+        const haystack = u.showEmail
+          ? `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase()
+          : `${u.firstName} ${u.lastName}`.toLowerCase();
+        return haystack.includes(q);
+      })
+    : users
+  ).filter((u) => !blocked.has(u.id));
 
   const ids = filtered.slice(0, 20).map((u) => u.id);
   const bonds = ids.length
@@ -740,7 +978,16 @@ export async function searchPeople(_prev: { results: PeopleHit[]; ran: boolean }
     if (bond?.status === "accepted") status = "friends";
     else if (bond?.status === "pending" && bond.fromId === me.id) status = "sent";
     else if (bond?.status === "pending") status = "incoming";
-    return { ...u, status };
+    return {
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.showEmail ? u.email : "",
+      university: u.university,
+      year: u.year,
+      major: u.major,
+      status,
+    };
   });
 
   return { results, ran: true };
@@ -767,6 +1014,12 @@ export async function deleteUser(formData: FormData) {
     select: { fileKey: true },
   });
   for (const dm of dms) await removeAttach(dm.fileKey);
+
+  const groupFiles = await prisma.message.findMany({
+    where: { userId, fileKey: { not: "" } },
+    select: { fileKey: true },
+  });
+  for (const msg of groupFiles) await removeAttach(msg.fileKey);
 
   await prisma.user.delete({ where: { id: userId } });
   redirect("/admin?deleted=1");

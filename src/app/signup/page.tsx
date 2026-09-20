@@ -15,7 +15,6 @@ export default async function SignupPage({
 
   const { error } = await searchParams;
   let msg: string | null = null;
-  if (error === "exists") msg = "That email is already signed up. Log in instead.";
   if (error === "match") msg = "Passwords do not match.";
   if (error === "weak") {
     msg = "Password needs 8+ characters with upper, lower, a number, and a special character.";

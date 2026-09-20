@@ -1,6 +1,14 @@
-import { createHash } from "crypto";
-import { cookies } from "next/headers";
 import { PrismaClient } from "@prisma/client";
+import { readSession } from "@/auth";
+
+export {
+  hashPassword,
+  needsPasswordUpgrade,
+  safeNextPath,
+  setUser,
+  clearUser,
+  verifyPassword,
+} from "@/auth";
 
 export {
   COURSES,
@@ -23,7 +31,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Bump when Prisma schema changes so dev picks up a fresh client after generate. */
-const PRISMA_CLIENT_VERSION = "2026-09-19-exam-fields";
+const PRISMA_CLIENT_VERSION = "2026-09-19-removed-member-v1";
 
 function createPrisma() {
   return new PrismaClient({ log: ["error"] });
@@ -45,10 +53,6 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prismaVersion = PRISMA_CLIENT_VERSION;
 }
 
-export function hashPassword(password: string) {
-  return createHash("sha256").update(password).digest("hex");
-}
-
 export function isStrongPassword(password: string) {
   return (
     password.length >= 8 &&
@@ -61,18 +65,61 @@ export function isStrongPassword(password: string) {
 
 export { initials } from "@/utils";
 
-export async function setUser(userId: string) {
-  (await cookies()).set("userId", userId, { httpOnly: true, path: "/", sameSite: "lax" });
-}
-
-export async function clearUser() {
-  (await cookies()).delete("userId");
-}
-
 export async function getMe() {
-  const id = (await cookies()).get("userId")?.value;
-  if (!id) return null;
-  return prisma.user.findUnique({ where: { id } });
+  const session = await readSession();
+  if (!session) return null;
+  const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!user) return null;
+  const dbVersion = typeof user.sessionVersion === "number" ? user.sessionVersion : 0;
+  if (dbVersion !== session.sessionVersion) return null;
+  return user;
+}
+
+export async function areFriends(a: string, b: string) {
+  if (await isBlockedBetween(a, b)) return false;
+  const bond = await prisma.friendship.findFirst({
+    where: {
+      status: "accepted",
+      OR: [
+        { fromId: a, toId: b },
+        { fromId: b, toId: a },
+      ],
+    },
+  });
+  return Boolean(bond);
+}
+
+export async function isBlockedBetween(a: string, b: string) {
+  if (a === b) return false;
+  const block = await prisma.block.findFirst({
+    where: {
+      OR: [
+        { blockerId: a, blockedId: b },
+        { blockerId: b, blockedId: a },
+      ],
+    },
+  });
+  return Boolean(block);
+}
+
+export async function blockedByMe(meId: string, otherId: string) {
+  const block = await prisma.block.findUnique({
+    where: { blockerId_blockedId: { blockerId: meId, blockedId: otherId } },
+  });
+  return Boolean(block);
+}
+
+/** User ids that cannot interact with `userId` because of a block either way. */
+export async function blockedUserIds(userId: string) {
+  const rows = await prisma.block.findMany({
+    where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  const ids = new Set<string>();
+  for (const row of rows) {
+    ids.add(row.blockerId === userId ? row.blockedId : row.blockerId);
+  }
+  return ids;
 }
 
 export function splitList(value: string | null | undefined) {
@@ -141,6 +188,20 @@ export function ymd(date: Date) {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/** One-line preview for group chat list / inbox. */
+export function groupMessagePreview(msg: {
+  unsent: boolean;
+  authorRemoved?: boolean;
+  text?: string | null;
+  fileName?: string | null;
+  user: { firstName: string };
+}) {
+  if (msg.unsent) return "Unsent";
+  if (msg.authorRemoved) return "Removed user";
+  const body = msg.text || (msg.fileName ? "Sent an attachment" : "New message");
+  return `${msg.user.firstName}: ${body}`;
 }
 
 export function timeAgo(date: Date) {

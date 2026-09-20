@@ -1,7 +1,13 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { createMeeting, leaveMeeting, updateMeeting } from "@/app/actions";
+import {
+  createMeeting,
+  deleteMeeting,
+  leaveMeeting,
+  removeMeetingMember,
+  updateMeeting,
+} from "@/app/actions";
 import {
   COURSES,
   GROUP_KINDS,
@@ -30,7 +36,7 @@ export function ClassBubbles({
 
   const trimmed = pick.trim();
   const suggestions = useMemo(() => {
-    return searchCourses(pick, 24).filter(
+    return searchCourses(pick, 48).filter(
       (course) => !items.some((item) => item.toLowerCase() === course.toLowerCase()),
     );
   }, [pick, items]);
@@ -107,7 +113,7 @@ export function ClassBubbles({
               ))}
               {suggestions.length === 0 && !showCustom ? (
                 <div className="topic-empty">
-                  {trimmed ? "No match — type a course name to add it." : "Start typing to search 600+ courses."}
+                  {trimmed ? "No match — type a course name to add it." : "Start typing to search 1,100+ courses."}
                 </div>
               ) : null}
             </div>
@@ -129,7 +135,7 @@ export function ClassBubbles({
           ))}
         </div>
       ) : (
-        <p className="text-muted class-bubbles-hint">Search 600+ courses or type your own — used for buddy and group matching.</p>
+        <p className="text-muted class-bubbles-hint">Search 1,100+ courses or type your own — used for buddy and group matching.</p>
       )}
       <input type="hidden" name={name} value={items.join(", ")} />
     </div>
@@ -155,11 +161,20 @@ export function ExamPrepFields({
   allowPastExamDate?: boolean;
 }) {
   const [course, setCourse] = useState(defaultCourse);
+  const [courseDraft, setCourseDraft] = useState("");
+  const [courseOpen, setCourseOpen] = useState(false);
   const [topics, setTopics] = useState<string[]>(defaultTopics);
   const [topicDraft, setTopicDraft] = useState("");
-  const [open, setOpen] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
 
-  const courseSuggestions = useMemo(() => searchCourses(course, 50), [course]);
+  const courseQuery = courseDraft.trim();
+  const courseSuggestions = useMemo(() => searchCourses(courseDraft, 48), [courseDraft]);
+  const exactCourse = useMemo(
+    () => COURSES.find((c) => c.toLowerCase() === courseQuery.toLowerCase()),
+    [courseQuery],
+  );
+  const showCustomCourse = courseQuery.length >= 2 && !exactCourse;
+
   const topicSuggestions = useMemo(() => topicsFor(course), [course]);
   const filteredTopics = useMemo(() => {
     const q = topicDraft.trim().toLowerCase();
@@ -167,7 +182,18 @@ export function ExamPrepFields({
     return topicSuggestions.filter((t) => t.toLowerCase().includes(q)).slice(0, 12);
   }, [topicSuggestions, topicDraft]);
 
+  function selectCourse(value: string) {
+    const cleaned = value.trim().slice(0, 80);
+    if (cleaned.length < 2) return;
+    if (cleaned.toLowerCase() !== course.toLowerCase()) setTopics([]);
+    setCourse(cleaned);
+    setCourseDraft("");
+    setCourseOpen(false);
+    setTopicDraft("");
+  }
+
   function addTopic(value: string) {
+    if (!course) return;
     const cleaned = value.trim();
     if (cleaned.length < 2) return;
     if (topics.some((t) => t.toLowerCase() === cleaned.toLowerCase())) return;
@@ -178,71 +204,149 @@ export function ExamPrepFields({
   return (
     <div className="exam-prep-fields">
       <p className="exam-prep-lead">Upcoming exam prep (optional — improves buddy matches)</p>
-      <label>
-        Exam course
-        <input
-          className="field"
-          name="examCourse"
-          list="exam-course-suggestions"
-          value={course}
-          onChange={(e) => setCourse(e.target.value)}
-          placeholder="e.g. Calc 2, Organic Chemistry 1"
-          maxLength={80}
-          autoComplete="off"
-        />
-        <datalist id="exam-course-suggestions">
-          {courseSuggestions.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-      </label>
-      <label>
-        Exam date
-        <input
-          className="field"
-          type="date"
-          name="examDate"
-          defaultValue={defaultDate}
-          min={allowPastExamDate ? undefined : new Date().toISOString().slice(0, 10)}
-        />
-      </label>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ marginBottom: 6 }}>Topics to focus on</div>
+        <div style={{ marginBottom: 6 }}>Subject</div>
+        {course ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            <span className="bubble">
+              {course}
+              <button
+                type="button"
+                className="bubble-x"
+                onClick={() => {
+                  setCourse("");
+                  setTopics([]);
+                  setTopicDraft("");
+                }}
+                aria-label={`Remove ${course}`}
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        ) : null}
+        {!course ? (
+          <div className="topic-picker">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                className="field"
+                style={{ marginBottom: 0, flex: 1 }}
+                value={courseDraft}
+                placeholder="Search courses or type your own"
+                maxLength={80}
+                autoComplete="off"
+                onFocus={() => setCourseOpen(true)}
+                onChange={(e) => {
+                  setCourseDraft(e.target.value);
+                  setCourseOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (courseSuggestions[0]) selectCourse(courseSuggestions[0]);
+                    else if (showCustomCourse) selectCourse(courseQuery);
+                  }
+                }}
+                onBlur={() => setTimeout(() => setCourseOpen(false), 150)}
+              />
+              <button
+                type="button"
+                className="btn"
+                disabled={courseQuery.length < 2}
+                onClick={() => selectCourse(showCustomCourse ? courseQuery : courseSuggestions[0] || courseQuery)}
+              >
+                Add
+              </button>
+            </div>
+            {courseOpen ? (
+              <div className="topic-menu">
+                {showCustomCourse ? (
+                  <button
+                    type="button"
+                    className="topic-option topic-option-custom"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectCourse(courseQuery)}
+                  >
+                    Add &quot;{courseQuery}&quot;
+                  </button>
+                ) : null}
+                {courseSuggestions.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="topic-option"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectCourse(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+                {courseSuggestions.length === 0 && !showCustomCourse ? (
+                  <div className="topic-empty">
+                    {courseQuery ? "No match — type a course name to add it." : "Start typing to search 1,100+ courses."}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <input type="hidden" name="examCourse" value={course} />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 6 }}>
+          Topics to focus on{course ? ` for ${course}` : ""}
+        </div>
         <div className="topic-picker">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input
               className="field"
               style={{ marginBottom: 0, flex: 1 }}
               value={topicDraft}
-              placeholder={course ? "Search topics or type your own" : "Pick a course first for suggestions"}
+              placeholder={course ? "Search topics or type your own" : "Pick a subject first"}
               autoComplete="off"
-              onFocus={() => setOpen(true)}
+              disabled={!course}
+              onFocus={() => setTopicOpen(true)}
               onChange={(e) => {
                 setTopicDraft(e.target.value);
-                setOpen(true);
+                setTopicOpen(true);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   addTopic(topicDraft);
-                  setOpen(false);
+                  setTopicOpen(false);
                 }
               }}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              onBlur={() => setTimeout(() => setTopicOpen(false), 150)}
             />
             <button
               type="button"
               className="btn"
+              disabled={!course}
               onClick={() => {
                 addTopic(topicDraft);
-                setOpen(false);
+                setTopicOpen(false);
               }}
             >
               Add
             </button>
           </div>
-          {open && filteredTopics.length ? (
+          {topicOpen && course ? (
             <div className="topic-menu">
+              {topicDraft.trim().length >= 2 &&
+              !filteredTopics.some((t) => t.toLowerCase() === topicDraft.trim().toLowerCase()) ? (
+                <button
+                  type="button"
+                  className="topic-option topic-option-custom"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    addTopic(topicDraft);
+                    setTopicOpen(false);
+                  }}
+                >
+                  Add &quot;{topicDraft.trim()}&quot;
+                </button>
+              ) : null}
               {filteredTopics.map((t) => (
                 <button
                   key={t}
@@ -251,12 +355,15 @@ export function ExamPrepFields({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     addTopic(t);
-                    setOpen(false);
+                    setTopicOpen(false);
                   }}
                 >
                   {t}
                 </button>
               ))}
+              {filteredTopics.length === 0 && topicDraft.trim().length < 2 ? (
+                <div className="topic-empty">Pick from suggestions or type your own topic.</div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -277,6 +384,16 @@ export function ExamPrepFields({
         </div>
         <input type="hidden" name="examTopics" value={topics.join(", ")} />
       </div>
+      <label>
+        Exam date
+        <input
+          className="field"
+          type="date"
+          name="examDate"
+          defaultValue={defaultDate}
+          min={allowPastExamDate ? undefined : new Date().toISOString().slice(0, 10)}
+        />
+      </label>
       <label>
         Preferred study style
         <select className="field" name="studyStyle" defaultValue={defaultStyle}>
@@ -559,7 +676,7 @@ export function SubjectTopicFields({
             setQuery("");
             setOpen(true);
           }}
-          placeholder="Search 600+ courses or type your own"
+          placeholder="Search 1,100+ courses or type your own"
           required
           maxLength={80}
           autoComplete="off"
@@ -696,6 +813,8 @@ export function CreateMeetupForm({
     style: string;
     maxSize: number;
     memberCount?: number;
+    isPrivate?: boolean;
+    requireApproval?: boolean;
   };
 }) {
   const editing = Boolean(meeting);
@@ -718,6 +837,10 @@ export function CreateMeetupForm({
   const [maxSize, setMaxSize] = useState(String(meeting?.maxSize || "5"));
   const [style, setStyle] = useState<string>(meeting?.style || MEETUP_STYLES[0]);
   const [notes, setNotes] = useState(meeting?.notes || "");
+  const [isPrivate, setIsPrivate] = useState(Boolean(meeting?.isPrivate));
+  const [requireApproval, setRequireApproval] = useState(
+    Boolean(meeting?.requireApproval && !meeting?.isPrivate),
+  );
 
   const kind = GROUP_KINDS.find((k) => k.id === groupKind) ?? GROUP_KINDS[1];
   const minSize = Math.max(kind.min, meeting?.memberCount || 1);
@@ -823,6 +946,35 @@ export function CreateMeetupForm({
           placeholder="Bring calculator, Zoom link, room number, what to study ahead…"
         />
       </label>
+      <fieldset className="meet-privacy-fieldset">
+        <legend>Privacy &amp; access</legend>
+        <label className="meet-privacy-option">
+          <input
+            type="checkbox"
+            name="isPrivate"
+            value="1"
+            checked={isPrivate}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setIsPrivate(next);
+              if (next) setRequireApproval(false);
+            }}
+          />
+          Private group — hidden from browse, owner invites only (no join requests)
+        </label>
+        {!isPrivate ? (
+          <label className="meet-privacy-option">
+            <input
+              type="checkbox"
+              name="requireApproval"
+              value="1"
+              checked={requireApproval}
+              onChange={(e) => setRequireApproval(e.target.checked)}
+            />
+            Require my approval before someone can join
+          </label>
+        ) : null}
+      </fieldset>
       <button className="btn" type="submit" disabled={pending}>
         {pending ? (editing ? "Saving…" : "Posting…") : editing ? "Save changes" : "Post meetup"}
       </button>
@@ -830,23 +982,31 @@ export function CreateMeetupForm({
   );
 }
 
-export function LeaveGroupButton({ meetingId }: { meetingId: string }) {
+export function LeaveGroupButton({
+  meetingId,
+  soloOwner = false,
+}: {
+  meetingId: string;
+  soloOwner?: boolean;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button type="button" className="pill" onClick={() => setOpen(true)}>
-        Leave group
+        {soloOwner ? "Leave & delete group" : "Leave group"}
       </button>
 
       {open ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="leave-title">
           <div className="modal">
             <h3 id="leave-title" style={{ marginTop: 0 }}>
-              Leave this group?
+              {soloOwner ? "Delete this empty group?" : "Leave this group?"}
             </h3>
             <p style={{ color: "#555" }}>
-              You&apos;ll be removed from the meetup and won&apos;t see the group chat unless you join again.
+              {soloOwner
+                ? "You're the only member — leaving will permanently delete this study group."
+                : "You'll be removed from the meetup and won't see the group chat unless you join again."}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button type="button" className="pill" onClick={() => setOpen(false)}>
@@ -856,6 +1016,87 @@ export function LeaveGroupButton({ meetingId }: { meetingId: string }) {
                 <input type="hidden" name="meetingId" value={meetingId} />
                 <button type="submit" className="btn">
                   Confirm leave
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function RemoveMemberButton({
+  meetingId,
+  userId,
+  name,
+}: {
+  meetingId: string;
+  userId: string;
+  name: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button type="button" className="pill meet-remove-member-btn" onClick={() => setOpen(true)}>
+        Remove
+      </button>
+
+      {open ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="remove-member-title">
+          <div className="modal">
+            <h3 id="remove-member-title" style={{ marginTop: 0 }}>
+              Remove {name}?
+            </h3>
+            <p style={{ color: "#555" }}>
+              They&apos;ll lose access to this group. Their past messages will show as &quot;Removed user&quot;.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" className="pill" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <form action={removeMeetingMember}>
+                <input type="hidden" name="meetingId" value={meetingId} />
+                <input type="hidden" name="userId" value={userId} />
+                <button type="submit" className="btn">
+                  Remove member
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function DeleteGroupButton({ meetingId, subject }: { meetingId: string; subject: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button type="button" className="pill" onClick={() => setOpen(true)}>
+        Delete group
+      </button>
+
+      {open ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-group-title">
+          <div className="modal">
+            <h3 id="delete-group-title" style={{ marginTop: 0 }}>
+              Delete this study group?
+            </h3>
+            <p style={{ color: "#555" }}>
+              Permanently remove <b>{subject}</b>, its chat history, and all member access. This cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" className="pill" onClick={() => setOpen(false)}>
+                Cancel
+              </button>
+              <form action={deleteMeeting}>
+                <input type="hidden" name="meetingId" value={meetingId} />
+                <button type="submit" className="btn">
+                  Delete group
                 </button>
               </form>
             </div>

@@ -1,26 +1,33 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { joinMeeting, sendMessage, unsendMessage } from "@/app/actions";
-import { CreateMeetupForm, LeaveGroupButton } from "@/ui";
+import { unsendMessage } from "@/app/actions";
+import { DmImage } from "@/app/friends/[id]/dm-image";
+import { isImageMime } from "@/files";
+import { CreateMeetupForm, DeleteGroupButton, LeaveGroupButton, RemoveMemberButton } from "@/ui";
 import { Avatar } from "@/avatar";
 import { ChatReactions } from "@/chat-reactions";
+import { CopyMessageButton } from "@/copy-message-btn";
+import { messageCopyText } from "@/message-copy";
 import { formatMeetDate, getMe, groupKindLabel, prisma, splitList } from "@/lib";
 import { packReactions } from "@/reactions";
 import { GroupSeenOnOpen } from "./seen";
+import { GroupChatCompose } from "./compose";
 import { InviteBuddies } from "./invite";
+import { JoinGroupButton } from "./join-button";
+import { JoinRequestsPanel } from "./join-requests";
 
 export default async function MeetingPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; edit?: string }>;
+  searchParams: Promise<{ error?: string; edit?: string; notice?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const { id } = await params;
-  const { error, edit } = await searchParams;
+  const { error, edit, notice } = await searchParams;
 
   const meeting = await prisma.meeting.findUnique({
     where: { id },
@@ -32,18 +39,40 @@ export default async function MeetingPage({
   if (!meeting) notFound();
 
   const joined = meeting.members.some((m) => m.userId === me.id);
-  const messages = await prisma.message.findMany({
-    where: { meetingId: id },
-    include: {
-      user: true,
-      ...(joined
-        ? { reactions: { include: { user: { select: { id: true, firstName: true } } } } }
-        : {}),
-    },
-    orderBy: { createdAt: "asc" },
-  });
   const isOwner = meeting.hostId === me.id;
+  const canViewMembers = joined || !meeting.isPrivate;
+
+  const joinRequest =
+    !joined && meeting.requireApproval && !meeting.isPrivate
+      ? await prisma.meetingJoinRequest.findUnique({
+          where: { meetingId_userId: { meetingId: id, userId: me.id } },
+        })
+      : null;
+  const joinPending = joinRequest?.status === "pending";
+
+  const pendingJoinRequests = isOwner
+    ? await prisma.meetingJoinRequest.findMany({
+        where: { meetingId: id, status: "pending" },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, photoKey: true, year: true, major: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+
+  const messages = joined
+    ? await prisma.message.findMany({
+        where: { meetingId: id },
+        include: {
+          user: true,
+          reactions: { include: { user: { select: { id: true, firstName: true } } } },
+        },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
   const topics = splitList(meeting.topic);
+  const full = meeting.members.length >= meeting.maxSize;
+  const soloOwner = isOwner && meeting.members.length === 1;
 
   const memberIds = new Set(meeting.members.map((m) => m.userId));
   const invites = joined
@@ -59,7 +88,7 @@ export default async function MeetingPage({
     year: string;
     major: string;
   }[] = [];
-  if (joined) {
+  if (joined && (!meeting.isPrivate || isOwner)) {
     const bonds = await prisma.friendship.findMany({
       where: {
         status: "accepted",
@@ -98,6 +127,8 @@ export default async function MeetingPage({
             style: meeting.style,
             maxSize: meeting.maxSize,
             memberCount: meeting.members.length,
+            isPrivate: meeting.isPrivate,
+            requireApproval: meeting.requireApproval,
           }}
         />
       </div>
@@ -108,7 +139,14 @@ export default async function MeetingPage({
     <div className="page">
       {joined ? <GroupSeenOnOpen meetingId={meeting.id} /> : null}
       {error === "full" ? <p className="err">This group is full.</p> : null}
+      {error === "owner" ? <p className="err">Group owners can&apos;t leave — delete the group instead.</p> : null}
       {error === "join" ? <p className="err">Join the group before chatting.</p> : null}
+      {error === "private" ? <p className="err">This private group is invite-only — you can&apos;t request to join here.</p> : null}
+      {notice === "requested" ? <p className="ok">Join request sent — the owner will review it.</p> : null}
+      {notice === "pending" ? <p className="ok">Your join request is already pending.</p> : null}
+      {notice === "member-removed" ? (
+        <p className="ok">Member removed — their messages now show as &quot;Removed user&quot;.</p>
+      ) : null}
 
       <header className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>
@@ -132,6 +170,12 @@ export default async function MeetingPage({
               </b>
             </span>
           </Link>
+        </div>
+        <div className="meet-badges" style={{ marginBottom: 10 }}>
+          {meeting.isPrivate ? <span className="badge private">Private</span> : null}
+          {meeting.requireApproval && !meeting.isPrivate ? (
+            <span className="badge approval">Approval required</span>
+          ) : null}
         </div>
         <p>
           <b>Subject:</b> {meeting.subject}
@@ -174,103 +218,158 @@ export default async function MeetingPage({
             <span style={{ color: "var(--ink)" }}>{meeting.notes}</span>
           </p>
         ) : null}
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {joined ? (
             isOwner ? (
-              <span className="pill active">You&apos;re the owner</span>
+              soloOwner ? (
+                <LeaveGroupButton meetingId={meeting.id} soloOwner />
+              ) : (
+                <>
+                  <span className="pill active">You&apos;re the owner</span>
+                  <DeleteGroupButton meetingId={meeting.id} subject={meeting.subject} />
+                </>
+              )
             ) : (
               <LeaveGroupButton meetingId={meeting.id} />
             )
           ) : (
-            <form action={joinMeeting}>
-              <input type="hidden" name="meetingId" value={meeting.id} />
-              <button className="btn" type="submit">
-                Join group
-              </button>
-            </form>
+            <JoinGroupButton
+              meetingId={meeting.id}
+              requireApproval={meeting.requireApproval}
+              pending={joinPending}
+              full={full}
+              isPrivate={meeting.isPrivate}
+            />
           )}
         </div>
       </div>
 
-      {joined ? (
+      {isOwner && !meeting.isPrivate && meeting.requireApproval ? (
+        <JoinRequestsPanel meetingId={meeting.id} requests={pendingJoinRequests} />
+      ) : null}
+
+      {joined && (!meeting.isPrivate || isOwner) ? (
         <InviteBuddies
           meetingId={meeting.id}
           buddies={inviteBuddies}
           pendingIds={pendingInviteIds}
+          ownerOnly={meeting.isPrivate}
         />
       ) : null}
 
       <h2>People</h2>
-      <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 12 }}>
-        {meeting.members.map((mem) => (
-          <Link key={mem.id} href={`/profile/${mem.userId}`} style={{ textAlign: "center" }}>
-            <Avatar user={mem.user} style={{ margin: "0 auto" }} />
-            <div style={{ marginTop: 6, fontSize: 14 }}>
-              {mem.user.firstName} {mem.user.lastName[0]}.
-              {mem.userId === meeting.hostId ? (
-                <div style={{ fontSize: 11, color: "var(--purple)", fontWeight: 700 }}>Owner</div>
+      {canViewMembers ? (
+        <div className="card meet-people-grid">
+          {meeting.members.map((mem) => (
+            <div key={mem.id} className="meet-person-card">
+              <Link href={`/profile/${mem.userId}`} className="meet-person-link">
+                <Avatar user={mem.user} style={{ margin: "0 auto" }} />
+                <div style={{ marginTop: 6, fontSize: 14 }}>
+                  {mem.user.firstName} {mem.user.lastName[0]}.
+                  {mem.userId === meeting.hostId ? (
+                    <div style={{ fontSize: 11, color: "var(--purple)", fontWeight: 700 }}>Owner</div>
+                  ) : null}
+                </div>
+              </Link>
+              {isOwner && mem.userId !== meeting.hostId ? (
+                <RemoveMemberButton
+                  meetingId={meeting.id}
+                  userId={mem.userId}
+                  name={`${mem.user.firstName} ${mem.user.lastName}`}
+                />
               ) : null}
             </div>
-          </Link>
-        ))}
-      </div>
-
-      <h2>Group Chat</h2>
-      <div className="card">
-        <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minHeight: 160, marginBottom: 12 }}>
-          {messages.length === 0 ? (
-            <p className="text-muted">No messages yet.</p>
-          ) : (
-            messages.map((msg) => (
-              <div key={msg.id} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <Link href={`/profile/${msg.userId}`}>
-                  <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
-                </Link>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                    <b style={{ fontSize: 13 }}>{msg.user.firstName}:</b>
-                    {msg.userId === me.id && !msg.unsent ? (
-                      <form action={unsendMessage} className="dm-unsend-form">
-                        <input type="hidden" name="messageId" value={msg.id} />
-                        <input type="hidden" name="meetingId" value={meeting.id} />
-                        <button type="submit" className="dm-unsend-btn">
-                          Unsend
-                        </button>
-                      </form>
-                    ) : null}
-                  </div>
-                  {msg.unsent ? (
-                    <div className="msg-unsent">Unsent</div>
-                  ) : (
-                    <>
-                      {msg.text}
-                      {joined ? (
-                        <ChatReactions
-                          kind="group"
-                          messageId={msg.id}
-                          meId={me.id}
-                          initial={packReactions(msg.reactions ?? [], me.id)}
-                        />
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+          ))}
         </div>
-        {joined ? (
-          <form action={sendMessage} style={{ display: "flex", gap: 8 }}>
-            <input type="hidden" name="meetingId" value={meeting.id} />
-            <input className="field" name="text" placeholder="Type a chat..." style={{ margin: 0 }} required />
-            <button className="btn" type="submit">
-              Send
-            </button>
-          </form>
-        ) : (
-          <p className="text-muted" style={{ margin: 0 }}>Join to chat.</p>
-        )}
-      </div>
+      ) : (
+        <div className="card">
+          <p className="text-muted" style={{ margin: 0 }}>
+            This is a private group — member profiles are visible after you join.
+          </p>
+        </div>
+      )}
+
+      {joined ? (
+        <>
+          <h2>Group Chat</h2>
+          <div className="card">
+            <div style={{ border: "1px solid #ccc", borderRadius: 8, padding: 12, minHeight: 160, marginBottom: 12 }}>
+              {messages.length === 0 ? (
+                <p className="text-muted">No messages yet.</p>
+              ) : (
+                messages.map((msg) => {
+                  const removed = msg.authorRemoved;
+                  const copyText = !msg.unsent && !removed ? messageCopyText(msg) : "";
+                  return (
+                  <div key={msg.id} className="group-chat-row" style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                    {removed ? (
+                      <span
+                        className="avatar removed-user-avatar"
+                        style={{ width: 28, height: 28, fontSize: 10, flexShrink: 0 }}
+                        aria-hidden
+                      >
+                        ?
+                      </span>
+                    ) : (
+                      <Link href={`/profile/${msg.userId}`}>
+                        <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
+                      </Link>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                        <b style={{ fontSize: 13 }}>{removed ? "Removed user" : `${msg.user.firstName}:`}</b>
+                        {!msg.unsent && !removed && (copyText || msg.userId === me.id) ? (
+                          <div className="dm-bubble-actions">
+                            {copyText ? <CopyMessageButton text={copyText} /> : null}
+                            {msg.userId === me.id ? (
+                              <form action={unsendMessage} className="dm-unsend-form">
+                                <input type="hidden" name="messageId" value={msg.id} />
+                                <input type="hidden" name="meetingId" value={meeting.id} />
+                                <button type="submit" className="dm-unsend-btn">
+                                  Unsend
+                                </button>
+                              </form>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                      {msg.unsent ? (
+                        <div className="msg-unsent">Unsent</div>
+                      ) : removed ? (
+                        <div className="msg-removed-user">Removed user</div>
+                      ) : (
+                        <>
+                          {msg.text ? <div className="dm-text">{msg.text}</div> : null}
+                          {msg.fileKey ? (
+                            isImageMime(msg.fileMime) ? (
+                              <DmImage src={`/api/files/${msg.id}`} alt={msg.fileName || "Photo"} />
+                            ) : (
+                              <a className="dm-file" href={`/api/files/${msg.id}`}>
+                                {msg.fileName || "Attachment"}
+                              </a>
+                            )
+                          ) : null}
+                          <ChatReactions
+                            kind="group"
+                            messageId={msg.id}
+                            meId={me.id}
+                            initial={packReactions(msg.reactions ?? [], me.id)}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  );
+                })
+              )}
+            </div>
+            {error === "empty" ? <p className="err">Add a message or attachment.</p> : null}
+            {error === "type" ? <p className="err">That file type isn&apos;t supported.</p> : null}
+            {error === "size" ? <p className="err">File must be 8 MB or smaller.</p> : null}
+            <GroupChatCompose meetingId={meeting.id} />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

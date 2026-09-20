@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
+import { hashPassword } from "../src/auth";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { seedMemeMeetups } from "../scripts/meme-meetups";
@@ -85,10 +86,6 @@ async function portraitPhotoKey(email: string) {
   const url = await randomUserPortrait(email);
   if (!url) return "";
   return photoKeyFor(url);
-}
-
-function hash(pw: string) {
-  return createHash("sha256").update(pw).digest("hex");
 }
 
 function dayOffset(days: number) {
@@ -632,7 +629,7 @@ async function main() {
   const jordan = await prisma.user.create({
     data: {
       email: "jsmith@auburn.edu",
-      password: hash("Password1!"),
+      password: hashPassword("Password1!"),
       firstName: "Jordan",
       lastName: "Taylor",
       pronouns: "they/them",
@@ -653,7 +650,7 @@ async function main() {
   const alex = await prisma.user.create({
     data: {
       email: "alex@auburn.edu",
-      password: hash("Password1!"),
+      password: hashPassword("Password1!"),
       firstName: "Alex",
       lastName: "Nguyen",
       pronouns: "he/him",
@@ -674,7 +671,7 @@ async function main() {
   const sam = await prisma.user.create({
     data: {
       email: "sam@auburn.edu",
-      password: hash("Password1!"),
+      password: hashPassword("Password1!"),
       firstName: "Sam",
       lastName: "Rivera",
       pronouns: "she/her",
@@ -697,7 +694,7 @@ async function main() {
   const henry = await prisma.user.create({
     data: {
       email: "henry@auburn.edu",
-      password: hash("Password1!"),
+      password: hashPassword("Password1!"),
       firstName: "Henry",
       lastName: "Park",
       pronouns: "he/him",
@@ -713,7 +710,7 @@ async function main() {
   const hailey = await prisma.user.create({
     data: {
       email: "hailey@auburn.edu",
-      password: hash("Password1!"),
+      password: hashPassword("Password1!"),
       firstName: "Hailey",
       lastName: "Brooks",
       pronouns: "she/her",
@@ -734,7 +731,7 @@ async function main() {
   const ryan = await prisma.user.create({
     data: {
       email: "ryanh@auburn.edu",
-      password: hash("RyanH"),
+      password: hashPassword("RyanH"),
       isAdmin: true,
       firstName: "Ryan",
       lastName: "H",
@@ -750,7 +747,7 @@ async function main() {
   const aiden = await prisma.user.create({
     data: {
       email: "aidenb@auburn.edu",
-      password: hash("AidenB"),
+      password: hashPassword("AidenB"),
       isAdmin: true,
       firstName: "Aiden",
       lastName: "B",
@@ -766,7 +763,7 @@ async function main() {
   const bryan = await prisma.user.create({
     data: {
       email: "bryanm@auburn.edu",
-      password: hash("BryanM"),
+      password: hashPassword("BryanM"),
       isAdmin: true,
       firstName: "Bryan",
       lastName: "M",
@@ -782,7 +779,7 @@ async function main() {
   const daniel = await prisma.user.create({
     data: {
       email: "danielk@auburn.edu",
-      password: hash("DanielK"),
+      password: hashPassword("DanielK"),
       isAdmin: true,
       firstName: "Daniel",
       lastName: "K",
@@ -808,7 +805,7 @@ async function main() {
       await prisma.user.create({
         data: {
           email: meme.email,
-          password: hash("Password1!"),
+          password: hashPassword("Password1!"),
           firstName: meme.firstName,
           lastName: meme.lastName,
           pronouns: meme.pronouns,

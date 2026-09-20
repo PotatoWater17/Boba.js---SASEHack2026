@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Avatar } from "@/avatar";
-import { formatMeetDate, getMe, groupKindLabel, prisma, timeAgo } from "@/lib";
+import { purgeOrphanMeetings } from "@/meeting-cleanup";
+import { formatMeetDate, getMe, groupKindLabel, groupMessagePreview, prisma, timeAgo } from "@/lib";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -14,12 +15,14 @@ const FILTERS = [
 export default async function GroupsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; notice?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
-  const { q: qRaw, filter: filterRaw } = await searchParams;
+  await purgeOrphanMeetings();
+
+  const { q: qRaw, filter: filterRaw, notice } = await searchParams;
   const q = (qRaw || "").trim().toLowerCase();
   const filter = FILTERS.some((f) => f.id === filterRaw) ? filterRaw || "" : "";
 
@@ -92,6 +95,8 @@ export default async function GroupsPage({
         <p>Meetups you signed up for — open one to chat.</p>
       </header>
 
+      {notice === "deleted" ? <p className="ok">Study group deleted.</p> : null}
+
       <div className="chat-search">
         <form method="get" className="chat-search-form">
           <input
@@ -127,9 +132,7 @@ export default async function GroupsPage({
       ) : (
         <div className="chat-list">
           {rows.map(({ m, last, unread }) => {
-            const preview = last
-              ? `${last.user.firstName}: ${last.text}`
-              : "No messages yet — say hi in group chat";
+            const preview = last ? groupMessagePreview(last) : "No messages yet — say hi in group chat";
             const when = last ? timeAgo(last.createdAt) : "";
             return (
               <Link

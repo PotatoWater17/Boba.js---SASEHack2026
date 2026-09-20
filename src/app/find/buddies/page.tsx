@@ -4,7 +4,7 @@ import { acceptFriend, addFriend } from "@/app/actions";
 import { MatchNotify } from "./notify";
 import { ClassBubbles, ExamPrepFields, MajorPicker, UniversityPicker } from "@/ui";
 import { Avatar } from "@/avatar";
-import { buddyMatch, formatMeetDate, getMe, prisma, splitList } from "@/lib";
+import { blockedUserIds, buddyMatch, formatMeetDate, getMe, prisma, splitList } from "@/lib";
 
 export default async function FindBuddiesPage({
   searchParams,
@@ -60,27 +60,29 @@ export default async function FindBuddiesPage({
   stayParams.set("year", prefs.year);
   const stay = `/find/buddies?${stayParams.toString()}`;
 
+  const blocked = submitted ? await blockedUserIds(me.id) : new Set<string>();
   const people = submitted
     ? await prisma.user.findMany({
         where: { id: { not: me.id } },
         orderBy: { firstName: "asc" },
       })
     : [];
+  const visiblePeople = people.filter((u) => !blocked.has(u.id));
   const friendships = submitted
     ? await prisma.friendship.findMany({
         where: { OR: [{ fromId: me.id }, { toId: me.id }] },
       })
     : [];
 
-  const userIds = people.map((u) => u.id);
+  const userIds = visiblePeople.map((u) => u.id);
   const meetupsByUser = new Map<string, { subject: string; topic: string; meetDate: string; style: string }[]>();
   if (submitted && userIds.length) {
     const hosted = await prisma.meeting.findMany({
-      where: { hostId: { in: userIds } },
+      where: { hostId: { in: userIds }, isPrivate: false },
       select: { hostId: true, subject: true, topic: true, meetDate: true, style: true },
     });
     const joined = await prisma.member.findMany({
-      where: { userId: { in: userIds } },
+      where: { userId: { in: userIds }, meeting: { isPrivate: false } },
       include: {
         meeting: { select: { subject: true, topic: true, meetDate: true, style: true } },
       },
@@ -97,7 +99,7 @@ export default async function FindBuddiesPage({
     }
   }
 
-  const ranked = people
+  const ranked = visiblePeople
     .map((user) => {
       const { score, reasons } = buddyMatch(prefs, user, meetupsByUser.get(user.id) || []);
       const bond = friendships.find(

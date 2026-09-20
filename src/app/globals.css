@@ -183,27 +183,9 @@ button {
 
 .nav-brand {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
   flex-shrink: 0;
-  width: fit-content;
-  color: var(--purple);
-  gap: 2px;
-}
-
-.nav-brand b {
-  display: block;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  color: var(--purple);
-}
-
-.nav-brand .tagline {
-  margin: 0;
-  padding: 2px 9px;
-  font-size: 10px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .nav-actions {
@@ -274,11 +256,7 @@ button {
 }
 
 .auth-brand-lockup {
-  align-items: flex-start;
-}
-
-.auth-brand-lockup b {
-  font-size: clamp(24px, 6vw, 28px);
+  align-items: center;
 }
 
 .auth-header {
@@ -321,13 +299,6 @@ button {
   font-size: 13px;
   color: var(--muted);
   margin: -6px 0 12px;
-}
-
-.auth-dev-hint {
-  font-size: 12px;
-  margin: 14px 0 0;
-  color: var(--muted);
-  line-height: 1.45;
 }
 
 .theme-toggle svg {
@@ -442,6 +413,10 @@ button.pill {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.photo-crop-backdrop {
+  z-index: 120;
 }
 
 .photo-crop-modal {
@@ -1262,12 +1237,12 @@ button.pill {
     max-width: 180px;
   }
 
-  .hero .brand-lockup {
+  .brand-lockup-lg {
     align-items: center;
     margin-inline: auto;
   }
 
-  .brand-lockup .page-title {
+  .brand-lockup-lg .brand-title {
     white-space: normal;
   }
 
@@ -1305,29 +1280,55 @@ button.pill {
   color: #8a6a00;
 }
 
+/* Shared StudyBuddyBoard + Fuel The Grind lockup — title:tagline ratio fixed everywhere */
 .brand-lockup {
+  --brand-title-size: 20px;
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
   width: fit-content;
   max-width: 100%;
-  gap: 4px;
+  gap: calc(var(--brand-title-size) * 0.1);
 }
 
-.brand-lockup .page-title {
+.brand-lockup-sm {
+  --brand-title-size: 20px;
+}
+
+.brand-lockup-md {
+  --brand-title-size: clamp(24px, 6vw, 28px);
+}
+
+.brand-lockup-lg {
+  --brand-title-size: clamp(28px, 7vw, 42px);
+}
+
+.brand-lockup .brand-title {
+  display: block;
   margin: 0;
+  font-size: var(--brand-title-size);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.1;
   white-space: nowrap;
   color: var(--purple);
 }
 
+.brand-lockup .tagline {
+  display: inline-block;
+  margin: 0;
+  padding: calc(var(--brand-title-size) * 0.1) calc(var(--brand-title-size) * 0.45);
+  font-size: calc(var(--brand-title-size) * 0.5);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  background: #f5b400;
+  border-radius: 999px;
+}
+
 .brand-name {
   color: var(--purple);
   font-weight: 700;
-}
-
-.hero .page-title {
-  font-size: clamp(28px, 7vw, 42px);
 }
 
 .find-hub {
@@ -1363,21 +1364,6 @@ button.pill {
 
 .btn-accent.find-hub-btn span {
   color: #374151;
-}
-
-.tagline {
-  display: inline-block;
-  margin: 0 0 14px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink);
-  background: #f5b400;
-  border-radius: 999px;
-}
-
-.brand-lockup .tagline {
-  margin: 0 0 4px;
 }
 
 .section {
@@ -1644,6 +1630,10 @@ button.pill {
   align-items: flex-start;
 }
 
+.class-bubbles-picker .topic-menu {
+  max-height: 320px;
+}
+
 .class-bubbles-picker {
   flex: 1;
   min-width: 0;
@@ -1802,6 +1792,72 @@ button.pill {
   border-color: #cfd4ff;
   color: var(--purple);
   font-weight: 600;
+}
+
+.badge.private {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
+  font-weight: 600;
+}
+
+.badge.approval {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.meet-privacy-fieldset {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.meet-privacy-fieldset legend {
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.meet-privacy-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.meet-privacy-option:first-of-type {
+  margin-top: 0;
+}
+
+.meet-join-requests h2 {
+  margin-top: 24px;
+}
+
+.meet-join-request-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.meet-join-request-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.meet-join-request-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .dash-stats {
@@ -2191,6 +2247,7 @@ button.cal-day:focus-visible {
 .chat-room .card {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -2355,6 +2412,8 @@ button.cal-day:focus-visible {
   padding: 8px;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow-x: clip;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2366,11 +2425,20 @@ button.cal-day:focus-visible {
   position: relative;
   align-self: flex-start;
   max-width: 80%;
+  min-width: 0;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 5px 8px;
   font-size: 13px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dm-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dm-bubble.mine {
@@ -2389,11 +2457,18 @@ button.cal-day:focus-visible {
   margin-bottom: 1px;
 }
 
-.dm-unsend-form {
-  margin: 0;
+.dm-bubble-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
 }
 
+.dm-unsend-form {
+  margin: 0;
+}
+
+.dm-copy-btn,
 .dm-unsend-btn {
   border: none;
   background: transparent;
@@ -2406,19 +2481,69 @@ button.cal-day:focus-visible {
   transition: opacity 0.15s;
 }
 
+.dm-bubble:hover .dm-copy-btn,
 .dm-bubble:hover .dm-unsend-btn,
-.dm-bubble-meta:hover .dm-unsend-btn {
+.dm-bubble-meta:hover .dm-copy-btn,
+.dm-bubble-meta:hover .dm-unsend-btn,
+.group-chat-row:hover .dm-copy-btn,
+.group-chat-row:hover .dm-unsend-btn {
   opacity: 1;
+}
+
+.dm-copy-btn:hover {
+  color: var(--purple);
 }
 
 .dm-unsend-btn:hover {
   color: #c62828;
 }
 
-.msg-unsent {
+@media (hover: none) {
+  .dm-copy-btn,
+  .dm-unsend-btn {
+    opacity: 1;
+  }
+}
+
+.msg-unsent,
+.msg-removed-user {
   font-style: italic;
   color: var(--muted-soft);
   font-size: 13px;
+}
+
+.removed-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--offwhite);
+  color: var(--muted-soft);
+  border: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.meet-people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.meet-person-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.meet-person-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.meet-remove-member-btn {
+  font-size: 12px;
+  padding: 4px 10px;
 }
 
 .dm-form {
@@ -2431,6 +2556,28 @@ button.cal-day:focus-visible {
   margin-top: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.dm-compose .btn,
+.dm-compose .dm-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dm-compose .dm-attach {
+  background: var(--offwhite);
+  border: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .dm-preview {
@@ -2698,15 +2845,8 @@ button.cal-day:focus-visible {
     min-width: 0;
   }
 
-  .nav-brand b {
-    font-size: 15px;
-    letter-spacing: -0.03em;
-  }
-
-  .nav-brand .tagline {
-    font-size: 9px;
-    padding: 1px 7px;
-    line-height: 1.25;
+  .brand-lockup-sm {
+    --brand-title-size: 15px;
   }
 
   .nav-actions {

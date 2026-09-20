@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const VIEWPORT = 280;
 const OUTPUT_SIZE = 512;
@@ -65,6 +66,7 @@ export function PhotoCropper({
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const imageRef = useRef<HTMLImageElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null);
@@ -79,6 +81,8 @@ export function PhotoCropper({
     },
     [scale],
   );
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -150,8 +154,16 @@ export function PhotoCropper({
     }
   }
 
-  return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Crop photo" onClick={onCancel}>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="modal-backdrop photo-crop-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Crop photo"
+      onClick={onCancel}
+    >
       <div className="modal photo-crop-modal" onClick={(e) => e.stopPropagation()}>
         <div className="photo-crop-head">
           <h2 className="page-title" style={{ margin: 0, fontSize: 20 }}>
@@ -209,6 +221,7 @@ export function PhotoCropper({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

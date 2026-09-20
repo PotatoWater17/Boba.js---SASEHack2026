@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { joinMeeting } from "@/app/actions";
+import { JoinGroupButton } from "@/app/meetings/[id]/join-button";
 import { Avatar } from "@/avatar";
 import {
   COURSES,
@@ -15,6 +15,7 @@ import {
   splitList,
   UNIVERSITIES,
 } from "@/lib";
+import { purgeOrphanMeetings } from "@/meeting-cleanup";
 
 export default async function BrowseMeetupsPage({
   searchParams,
@@ -31,6 +32,8 @@ export default async function BrowseMeetupsPage({
   const me = await getMe();
   if (!me) redirect("/login");
 
+  await purgeOrphanMeetings();
+
   const { subject: subjectRaw, page: pageRaw, mine, kind, style, uni: uniRaw } = await searchParams;
   const subject = (subjectRaw || "").trim();
   const page = Math.max(1, Number(pageRaw) || 1);
@@ -41,6 +44,7 @@ export default async function BrowseMeetupsPage({
 
   const meetings = await prisma.meeting.findMany({
     where: {
+      isPrivate: false,
       ...(subject ? { subject: { contains: subject } } : {}),
       ...(kind ? { groupKind: kind } : {}),
       ...(style ? { style } : {}),
@@ -48,6 +52,15 @@ export default async function BrowseMeetupsPage({
     },
     include: { members: { include: { user: true } } },
   });
+
+  const pendingJoinIds = new Set(
+    (
+      await prisma.meetingJoinRequest.findMany({
+        where: { userId: me.id, status: "pending" },
+        select: { meetingId: true },
+      })
+    ).map((r) => r.meetingId),
+  );
 
   const ranked = meetings
     .map((m) => ({
@@ -207,6 +220,7 @@ export default async function BrowseMeetupsPage({
                         {groupKindLabel(m.groupKind || "small")}
                       </span>
                       {m.style ? <span className="badge style">{m.style}</span> : null}
+                      {m.requireApproval ? <span className="badge approval">Approval required</span> : null}
                       {m.university ? <span className="badge uni">{m.university}</span> : null}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
@@ -227,12 +241,14 @@ export default async function BrowseMeetupsPage({
                       {m.members.length}/{m.maxSize} attending
                     </div>
                     {!joined && !full ? (
-                      <form action={joinMeeting} style={{ marginTop: 8 }}>
-                        <input type="hidden" name="meetingId" value={m.id} />
-                        <button className="btn" type="submit">
-                          Join
-                        </button>
-                      </form>
+                      <div style={{ marginTop: 8 }}>
+                        <JoinGroupButton
+                          meetingId={m.id}
+                          requireApproval={m.requireApproval}
+                          pending={pendingJoinIds.has(m.id)}
+                          full={full}
+                        />
+                      </div>
                     ) : (
                       <Link className="pill" href={`/meetings/${m.id}`} style={{ display: "inline-block", marginTop: 8 }}>
                         {joined ? "Open" : "Full"}
