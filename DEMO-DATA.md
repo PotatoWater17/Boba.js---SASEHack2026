@@ -2,6 +2,7 @@
 
 **Source of truth:** `prisma/seed.ts` (full wipe + recreate).  
 **Account profiles (git backup):** `prisma/accounts.snapshot.json` — all 51 live demo users + friendships.  
+**Admin profile photos (git backup):** `prisma/seed-avatars/` — Ryan, Aiden, Bryan, and Daniel PFPs. 
 **Non-destructive add-ons:** `scripts/patch-demo-world.ts`, `scripts/seed-ryan-friends.ts`, `scripts/restore-team.ts`.
 
 Use this doc to restore demo profiles, friendships, DMs, and group chats after schema changes or accidental DB edits.
@@ -49,20 +50,20 @@ All accounts use `@auburn.edu` emails (meme accounts too — they’re Auburn pa
 
 ## Dev team (admin, Auburn)
 
-All four are `isAdmin: true` and fully friends with each other.
+All four are `isAdmin: true` and fully friends with each other. Profile photos are stored in **`prisma/seed-avatars/`** (committed) so clones keep the same PFPs.
 
 | Email | Password | Name | Year | Major | needHelp | canHelp |
 |-------|----------|------|------|-------|----------|---------|
-| `ryanh@auburn.edu` | `RyanH` | Ryan H | Junior | Computer Science | Calc 2 | Intro to Programming |
-| `aidenb@auburn.edu` | `AidenB` | Aiden B | Sophomore | Computer Science | Data Structures | Intro to Programming |
-| `bryanm@auburn.edu` | `BryanM` | Bryan M | Junior | Software Engineering | Physics 1 | Software Engineering |
-| `danielk@auburn.edu` | `DanielK` | Daniel K | Sophomore | Computer Science | Discrete Math | Calc 1 |
+| `ryanh@auburn.edu` | `RyanH` | Ryan Huynh (he/him) | Sophomore | Computer Engineering | — | Intro to Programming |
+| `aidenb@auburn.edu` | `AidenB` | Aiden Brooks | Sophomore | Computer Science | Data Structures | Intro to Programming |
+| `bryanm@auburn.edu` | `BryanM` | Bryan Mai | Senior | Software Engineering | Databases | Calc 1, Calc 2, Intro to Programming |
+| `danielk@auburn.edu` | `DanielK` | Daniel K | Sophomore | Mechanical Engineering | Discrete Math | Calc 1 |
 
 **Bios**
 
-- Ryan: “Dev. Usually in the library or on a whiteboard.”
-- Aiden: “Dev. Down to grind practice problems.”
-- Bryan: “Dev. Exam reviews and late night debugging.”
+- Ryan: “Dev. Usually in the dining hall.”
+- Aiden: “Spider-Man”
+- Bryan: “Dev / Staying up late doing video editing, gaming, or SASE”
 - Daniel: “Dev. Looking for a regular study crew.”
 
 **Best login for demos:** `ryanh@auburn.edu` / `RyanH` → `/friends`, `/dashboard`, `/admin`
@@ -265,13 +266,13 @@ Seed also creates **15 additional meetings** (`EXTRA` array in `seed.ts`) hosted
 | `db:reset` | `prisma db push --force-reset` + `prisma db seed` — **wipes all users, chats, meetups** |
 | `db:seed` | Run seed only (no schema reset) |
 | `db:demo-full` | `db:reset` + `db:ryan-friends` + `db:restore-accounts` — **full demo in one command** |
-| `db:backup-accounts` | Export live DB users → `prisma/accounts.snapshot.json` (commit to git) |
-| `db:restore-accounts` | Upsert users + friendships from `prisma/accounts.snapshot.json` (idempotent) |
-| `db:restore-team` | Upsert 4 dev accounts + mutual friendships (no wipe) |
+| `db:backup-accounts` | Export live DB users → `prisma/accounts.snapshot.json` and admin PFPs → `prisma/seed-avatars/` (commit both) |
+| `db:restore-accounts` | Upsert users + friendships from snapshot; copy bundled admin photos (idempotent) |
+| `db:restore-team` | Upsert 4 dev accounts + mutual friendships (does not overwrite edited profile fields) |
 | `db:patch-demo` | Fix universities, exam fields, dev/cross-school meetups, dev DMs (idempotent) |
 | `db:ryan-friends` | Ryan’s extended buddies + Ryan-specific DMs (idempotent) |
 | `db:meme-meetups` | Meme study groups + funny group chat threads (idempotent) |
-| `db:refresh-avatars` | Re-fetch profile photos for users missing `photoKey` |
+| `db:refresh-avatars` | Re-fetch profile photos (skips bundled admin PFPs) |
 
 ---
 
@@ -290,10 +291,10 @@ These are not in `seed.ts` but are restored from **`prisma/accounts.snapshot.jso
 
 ## Editing demo data
 
-1. Edit profiles in the app (or DB), then run **`npm run db:backup-accounts`** and commit **`prisma/accounts.snapshot.json`**.
+1. Edit profiles in the app (or DB), then run **`npm run db:backup-accounts`** and commit **`prisma/accounts.snapshot.json`** plus any new files in **`prisma/seed-avatars/`** (admin PFPs).
 2. Change **`prisma/seed.ts`** for meetups, DMs, and base structure on `db:reset`.
 3. Change **`scripts/seed-ryan-friends.ts`** for Ryan-only buddy/DM extras.
 4. Change **`scripts/patch-demo-world.ts`** for idempotent patches on live DBs.
 5. Update **this file** when adding accounts or chat content so the team can restore.
 
-**Do not** rely on manual DB edits alone — run `db:backup-accounts` and commit the snapshot so GitHub/demo clones get the same users.
+**Do not** rely on manual DB edits alone — run `db:backup-accounts` and commit the snapshot (and `prisma/seed-avatars/` for admin photos) so GitHub/demo clones get the same users.

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/auth";
 import { nextAccountNo } from "../src/account-id";
+import { installBundledAvatar } from "./bundled-avatars";
 
 const prisma = new PrismaClient();
 
@@ -9,21 +10,23 @@ const DEVS = [
     email: "ryanh@auburn.edu",
     password: "RyanH",
     firstName: "Ryan",
-    lastName: "H",
-    year: "Junior",
-    major: "Computer Science",
-    bio: "Dev. Usually in the library or on a whiteboard.",
-    needHelp: "Calc 2",
+    lastName: "Huynh",
+    pronouns: "He/Him",
+    year: "Sophomore",
+    major: "Computer Engineering",
+    bio: "Dev. Usually in the dining hall.",
+    needHelp: "",
     canHelp: "Intro to Programming",
   },
   {
     email: "aidenb@auburn.edu",
     password: "AidenB",
     firstName: "Aiden",
-    lastName: "B",
+    lastName: "Brooks",
+    pronouns: "",
     year: "Sophomore",
     major: "Computer Science",
-    bio: "Dev. Down to grind practice problems.",
+    bio: "Spider-Man",
     needHelp: "Data Structures",
     canHelp: "Intro to Programming",
   },
@@ -31,20 +34,22 @@ const DEVS = [
     email: "bryanm@auburn.edu",
     password: "BryanM",
     firstName: "Bryan",
-    lastName: "M",
-    year: "Junior",
+    lastName: "Mai",
+    pronouns: "",
+    year: "Senior",
     major: "Software Engineering",
-    bio: "Dev. Exam reviews and late night debugging.",
-    needHelp: "Physics 1",
-    canHelp: "Software Engineering",
+    bio: "Dev\r\nStaying up late doing video editing, gaming, or SASE 👀",
+    needHelp: "Databases",
+    canHelp: "Calc 1, Calc 2, Intro to Programming",
   },
   {
     email: "danielk@auburn.edu",
     password: "DanielK",
     firstName: "Daniel",
     lastName: "K",
+    pronouns: "",
     year: "Sophomore",
-    major: "Computer Science",
+    major: "Mechanical Engineering",
     bio: "Dev. Looking for a regular study crew.",
     needHelp: "Discrete Math",
     canHelp: "Calc 1",
@@ -53,28 +58,36 @@ const DEVS = [
 
 async function ensureDev(dev: (typeof DEVS)[number]) {
   const existing = await prisma.user.findUnique({ where: { email: dev.email } });
-  const data = {
-    password: hashPassword(dev.password),
-    firstName: dev.firstName,
-    lastName: dev.lastName,
-    year: dev.year,
-    major: dev.major,
-    university: "Auburn University",
-    bio: dev.bio,
-    needHelp: dev.needHelp,
-    canHelp: dev.canHelp,
-    isAdmin: true,
-  };
+  const photoKey = await installBundledAvatar(dev.email);
 
   if (existing) {
-    return prisma.user.update({ where: { email: dev.email }, data });
+    // Keep edited profile fields. Only ensure admin access, demo password, and bundled PFP.
+    return prisma.user.update({
+      where: { email: dev.email },
+      data: {
+        password: hashPassword(dev.password),
+        isAdmin: true,
+        ...(photoKey ? { photoKey } : {}),
+      },
+    });
   }
 
   return prisma.user.create({
     data: {
       email: dev.email,
       accountNo: await nextAccountNo(),
-      ...data,
+      password: hashPassword(dev.password),
+      firstName: dev.firstName,
+      lastName: dev.lastName,
+      pronouns: dev.pronouns,
+      year: dev.year,
+      major: dev.major,
+      university: "Auburn University",
+      bio: dev.bio,
+      needHelp: dev.needHelp,
+      canHelp: dev.canHelp,
+      isAdmin: true,
+      ...(photoKey ? { photoKey } : {}),
     },
   });
 }

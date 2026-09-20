@@ -11,6 +11,7 @@ import {
   hashDemoPassword,
   SNAPSHOT_PATH,
 } from "./account-snapshot";
+import { installBundledAvatar } from "./bundled-avatars";
 
 const prisma = new PrismaClient();
 
@@ -47,11 +48,14 @@ async function main() {
       showEmail: u.showEmail,
     };
 
+    const photoKey = await installBundledAvatar(u.email);
+    const withPhoto = photoKey ? { ...data, photoKey } : data;
+
     const existing = await prisma.user.findUnique({ where: { email: u.email } });
     if (existing) {
       await prisma.user.update({
         where: { email: u.email },
-        data: u.accountNo && !existing.accountNo ? { ...data, accountNo: u.accountNo } : data,
+        data: u.accountNo && !existing.accountNo ? { ...withPhoto, accountNo: u.accountNo } : withPhoto,
       });
       idByEmail.set(u.email, existing.id);
       updated++;
@@ -60,7 +64,7 @@ async function main() {
         data: {
           email: u.email,
           accountNo: u.accountNo ?? (await nextAccountNo()),
-          ...data,
+          ...withPhoto,
         },
       });
       idByEmail.set(u.email, row.id);

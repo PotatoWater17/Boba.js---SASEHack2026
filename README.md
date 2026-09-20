@@ -11,6 +11,143 @@ SASEHack 2026 — a campus study-group app for finding exam prep buddies, joinin
 
 ---
 
+## How to run it (Mac, Windows, and Linux)
+
+Follow these steps in order. The only commands that differ by operating system are **opening a terminal** and **copying the `.env` file**. Everything else is the same.
+
+### Before you start
+
+Install these two things if you do not already have them:
+
+1. **Git** — [https://git-scm.com/downloads](https://git-scm.com/downloads)
+2. **Node.js 20 or newer** (this also installs `npm`) — [https://nodejs.org](https://nodejs.org) (LTS)
+
+Check that they work:
+
+```bash
+git --version
+node -v
+npm -v
+```
+
+You should see version numbers, not an error. If `node -v` is below 20, install a newer Node.js and open a **new** terminal.
+
+---
+
+### Step 1 — Open a terminal
+
+**Mac:** open **Terminal** (Spotlight → type `Terminal`).
+
+**Windows:** open **PowerShell** (Start menu → type `PowerShell`). Git Bash also works.
+
+**Linux:** open your terminal app (or press `Ctrl+Alt+T` on many distros).
+
+---
+
+### Step 2 — Download the project
+
+If you **already have the folder**, skip the clone and just `cd` into it.
+
+```bash
+git clone https://github.com/PotatoWater17/Boba.js---SASEHack2026.git
+cd Boba.js---SASEHack2026
+```
+
+Stay in this folder for every later step.
+
+---
+
+### Step 3 — Install packages
+
+```bash
+npm install
+```
+
+Wait until it finishes with no errors.
+
+---
+
+### Step 4 — Create the `.env` file
+
+This copies the example settings. Default values are fine for local use.
+
+**Mac / Linux:**
+
+```bash
+cp .env.example .env
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+**Windows (Command Prompt):**
+
+```cmd
+copy .env.example .env
+```
+
+You do not need to edit `.env` to run locally. (On Windows Git Bash, the Mac/Linux `cp` command also works.)
+
+For a real deployment, set `SESSION_SECRET` in `.env` to a long random string.
+
+---
+
+### Step 5 — Set up the database (first time only)
+
+This creates the SQLite database and loads demo users, groups, and chats:
+
+```bash
+npx prisma db push
+npx prisma generate
+npm run db:demo-full
+```
+
+Run this again later if the app looks empty, or after someone changes the database schema.
+
+---
+
+### Step 6 — Start the app
+
+```bash
+npm run dev
+```
+
+Leave this terminal open. Then in a browser go to:
+
+**http://localhost:3000**
+
+To stop the server, click that terminal and press `Ctrl+C` (same on Mac, Windows, and Linux).
+
+---
+
+### Step 7 — Log in with a demo account
+
+| Who | Email | Password |
+|-----|-------|----------|
+| Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
+| Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
+| Dev team | `aidenb@`, `bryanm@`, `danielk@` `@auburn.edu` | `AidenB`, `BryanM`, `DanielK` |
+
+More accounts: **[DEMO-DATA.md](./DEMO-DATA.md)**
+
+---
+
+### Optional — production build
+
+Same on Mac, Windows, and Linux:
+
+```bash
+npm run build
+npm start
+```
+
+Then open **http://localhost:3000**.
+
+---
+
 ## How it is implemented
 
 ### Stack
@@ -59,84 +196,7 @@ Browser
 - `DirectMessage`, `Message` — 1:1 and group chat
 - `Block`, `MeetingJoinRequest`, `MeetupInvite` — safety and join flows
 
-After cloning or pulling schema changes, always sync the DB **and** regenerate the Prisma client (see below).
-
----
-
-## Prerequisites
-
-- **Node.js 20+** and npm
-- **Git**
-
----
-
-## Setup and run (local)
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/PotatoWater17/Boba.js---SASEHack2026.git
-cd Boba.js---SASEHack2026
-npm install
-```
-
-### 2. Environment
-
-Copy the example env file:
-
-```bash
-cp .env.example .env
-```
-
-Default values work for local development:
-
-```env
-DATABASE_URL="file:./dev.db"
-SESSION_SECRET="generate-a-long-random-string"
-```
-
-`SESSION_SECRET` can be any long random string locally. **Required in production** for secure cookies.
-
-### 3. Database (first time or after schema changes)
-
-Apply the schema, generate the client, and load demo data:
-
-```bash
-npx prisma db push
-npx prisma generate
-npm run db:demo-full
-```
-
-`db:demo-full` resets the DB, seeds users/groups/chats, restores Ryan’s buddy list, syncs account snapshots, and backfills online/in-person tags.
-
-> **Important:** If you see errors like `Unknown argument isOnline`, the Prisma client is stale. Stop the dev server, run `npx prisma generate`, then start again.
-
-### 4. Start the app
-
-**Development** (hot reload):
-
-```bash
-npm run dev
-```
-
-Open **http://localhost:3000**
-
-**Production build** (optional):
-
-```bash
-npm run build
-npm start
-```
-
-### 5. Log in with a demo account
-
-| Who | Email | Password |
-|-----|-------|----------|
-| Main demo (Jordan) | `jsmith@auburn.edu` | `Password1!` |
-| Dev / admin (Ryan) | `ryanh@auburn.edu` | `RyanH` |
-| Dev team | `aidenb@`, `bryanm@`, `danielk@` `@auburn.edu` | `AidenB`, `BryanM`, `DanielK` |
-
-More accounts, DMs, and restore commands: **[DEMO-DATA.md](./DEMO-DATA.md)**
+After cloning or pulling schema changes, always sync the DB **and** regenerate the Prisma client (`npx prisma db push`, then `npx prisma generate`).
 
 ---
 
@@ -151,7 +211,7 @@ More accounts, DMs, and restore commands: **[DEMO-DATA.md](./DEMO-DATA.md)**
 | `npm run db:push` | Apply Prisma schema to SQLite |
 | `npm run db:seed` | Seed demo data only |
 | `npm run db:demo-full` | Full demo reset (recommended for judges) |
-| `npm run db:restore-accounts` | Restore profiles from `accounts.snapshot.json` |
+| `npm run db:restore-accounts` | Restore profiles from snapshot and admin PFPs from `prisma/seed-avatars/` |
 
 ---
 
@@ -169,10 +229,13 @@ This only works while someone’s laptop is running both `npm run dev` and `clou
 
 | Problem | Fix |
 |---------|-----|
-| `Unknown argument …` from Prisma | Stop dev server → `npx prisma db push` → `npx prisma generate` → `npm run dev` |
-| `EPERM` on `prisma generate` (Windows) | Dev server is locking files — stop it first |
-| Empty app / no users | Run `npm run db:demo-full` |
-| Login fails after pull | Re-run `npx prisma generate` and restart dev server |
+| `git` / `node` / `npm` not found | Install Git and Node.js 20+, then **close and reopen** the terminal |
+| `cp` is not recognized (Windows) | Use `Copy-Item .env.example .env` in PowerShell, or `copy .env.example .env` in Command Prompt |
+| `Unknown argument …` from Prisma | Stop the server (`Ctrl+C`) → `npx prisma db push` → `npx prisma generate` → `npm run dev` |
+| `EPERM` on `prisma generate` (Windows) | The dev server is locking files — stop it with `Ctrl+C`, then run generate again |
+| Empty app / no users | From the project folder, run `npm run db:demo-full` |
+| Login fails after a git pull | Stop the server, run `npx prisma generate`, then `npm run dev` again |
+| Port 3000 already in use | Stop the other process, or run `npx next dev -p 3001` and open that port instead |
 
 ---
 

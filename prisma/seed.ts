@@ -7,6 +7,7 @@ import { seedMemeMeetups } from "../scripts/meme-meetups";
 import { backfillAccountNumbers } from "../src/account-id";
 import { AVATAR_DIR } from "../src/files";
 import { inferMeetingOnline } from "../src/meeting-format";
+import { installBundledAvatar } from "../scripts/bundled-avatars";
 
 const prisma = new PrismaClient();
 
@@ -84,6 +85,8 @@ async function wikiThumbsBatch(titles: string[]) {
 }
 
 async function portraitPhotoKey(email: string) {
+  const bundled = await installBundledAvatar(email);
+  if (bundled) return bundled;
   const url = await randomUserPortrait(email);
   if (!url) return "";
   return photoKeyFor(url);
@@ -735,12 +738,13 @@ async function main() {
       password: hashPassword("RyanH"),
       isAdmin: true,
       firstName: "Ryan",
-      lastName: "H",
-      year: "Junior",
-      major: "Computer Science",
+      lastName: "Huynh",
+      pronouns: "He/Him",
+      year: "Sophomore",
+      major: "Computer Engineering",
       university: "Auburn University",
-      bio: "Dev. Usually in the library or on a whiteboard.",
-      needHelp: "Calc 2",
+      bio: "Dev. Usually in the dining hall.",
+      needHelp: "",
       canHelp: "Intro to Programming",
       photoKey: await portraitPhotoKey("ryanh@auburn.edu"),
     },
@@ -751,11 +755,11 @@ async function main() {
       password: hashPassword("AidenB"),
       isAdmin: true,
       firstName: "Aiden",
-      lastName: "B",
+      lastName: "Brooks",
       year: "Sophomore",
       major: "Computer Science",
       university: "Auburn University",
-      bio: "Dev. Down to grind practice problems.",
+      bio: "Spider-Man",
       needHelp: "Data Structures",
       canHelp: "Intro to Programming",
       photoKey: await portraitPhotoKey("aidenb@auburn.edu"),
@@ -767,13 +771,13 @@ async function main() {
       password: hashPassword("BryanM"),
       isAdmin: true,
       firstName: "Bryan",
-      lastName: "M",
-      year: "Junior",
+      lastName: "Mai",
+      year: "Senior",
       major: "Software Engineering",
       university: "Auburn University",
-      bio: "Dev. Exam reviews and late night debugging.",
-      needHelp: "Physics 1",
-      canHelp: "Software Engineering",
+      bio: "Dev\r\nStaying up late doing video editing, gaming, or SASE 👀",
+      needHelp: "Databases",
+      canHelp: "Calc 1, Calc 2, Intro to Programming",
       photoKey: await portraitPhotoKey("bryanm@auburn.edu"),
     },
   });
@@ -785,7 +789,7 @@ async function main() {
       firstName: "Daniel",
       lastName: "K",
       year: "Sophomore",
-      major: "Computer Science",
+      major: "Mechanical Engineering",
       university: "Auburn University",
       bio: "Dev. Looking for a regular study crew.",
       needHelp: "Discrete Math",

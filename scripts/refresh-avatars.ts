@@ -7,6 +7,7 @@ import { randomBytes } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { AVATAR_DIR } from "../src/files";
+import { hasBundledAvatar } from "./bundled-avatars";
 
 const prisma = new PrismaClient();
 const SEED_UA = "StudyBuddyBoard/0.1 (personal dev seed; local only)";
@@ -137,6 +138,11 @@ async function main() {
   let updated = 0;
   let skipped = 0;
   for (const user of users) {
+    if (await hasBundledAvatar(user.email)) {
+      console.log(`  keep ${user.email} (bundled admin photo)`);
+      skipped++;
+      continue;
+    }
     const result = await photoForUser(user.email, wikiThumbs);
     await new Promise((r) => setTimeout(r, 120));
     if (!result) {

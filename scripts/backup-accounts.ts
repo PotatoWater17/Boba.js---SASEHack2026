@@ -10,6 +10,7 @@ import {
   demoPasswordForEmail,
   SNAPSHOT_PATH,
 } from "./account-snapshot";
+import { backupBundledAvatar } from "./bundled-avatars";
 
 const prisma = new PrismaClient();
 
@@ -55,8 +56,15 @@ async function main() {
   const out = path.join(process.cwd(), SNAPSHOT_PATH);
   await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
 
+  let photos = 0;
+  for (const u of users) {
+    if (!u.isAdmin) continue;
+    if (await backupBundledAvatar(u.email, u.photoKey)) photos++;
+  }
+
   console.log(`Backed up ${snapshot.users.length} accounts and ${snapshot.friendships.length} friendships → ${SNAPSHOT_PATH}`);
-  console.log("Commit this file to git so demo/GitHub restores the same users.");
+  console.log(`Saved ${photos} admin profile photos → prisma/seed-avatars/`);
+  console.log("Commit the snapshot and prisma/seed-avatars/ so GitHub clones restore the same users and PFPs.");
 }
 
 main()
