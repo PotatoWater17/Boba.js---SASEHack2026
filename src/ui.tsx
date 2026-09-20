@@ -8,6 +8,7 @@ import {
   removeMeetingMember,
   updateMeeting,
 } from "@/app/actions";
+import { Modal } from "@/modal";
 import {
   COURSES,
   GROUP_KINDS,
@@ -997,31 +998,29 @@ export function LeaveGroupButton({
         {soloOwner ? "Leave & delete group" : "Leave group"}
       </button>
 
-      {open ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="leave-title">
-          <div className="modal">
-            <h3 id="leave-title" style={{ marginTop: 0 }}>
-              {soloOwner ? "Delete this empty group?" : "Leave this group?"}
-            </h3>
-            <p style={{ color: "#555" }}>
-              {soloOwner
-                ? "You're the only member — leaving will permanently delete this study group."
-                : "You'll be removed from the meetup and won't see the group chat unless you join again."}
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button type="button" className="pill" onClick={() => setOpen(false)}>
-                Cancel
-              </button>
-              <form action={leaveMeeting}>
-                <input type="hidden" name="meetingId" value={meetingId} />
-                <button type="submit" className="btn">
-                  Confirm leave
-                </button>
-              </form>
-            </div>
-          </div>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={soloOwner ? "Delete this empty group?" : "Leave this group?"}
+        description={
+          soloOwner
+            ? "You're the only member — leaving will permanently delete this study group."
+            : "You'll be removed from the meetup and won't see the group chat unless you join again."
+        }
+        titleId="leave-title"
+      >
+        <div className="modal-actions">
+          <button type="button" className="pill" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+          <form action={leaveMeeting}>
+            <input type="hidden" name="meetingId" value={meetingId} />
+            <button type="submit" className="btn">
+              Confirm leave
+            </button>
+          </form>
         </div>
-      ) : null}
+      </Modal>
     </>
   );
 }
@@ -1043,30 +1042,26 @@ export function RemoveMemberButton({
         Remove
       </button>
 
-      {open ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="remove-member-title">
-          <div className="modal">
-            <h3 id="remove-member-title" style={{ marginTop: 0 }}>
-              Remove {name}?
-            </h3>
-            <p style={{ color: "#555" }}>
-              They&apos;ll lose access to this group. Their past messages will show as &quot;Removed user&quot;.
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button type="button" className="pill" onClick={() => setOpen(false)}>
-                Cancel
-              </button>
-              <form action={removeMeetingMember}>
-                <input type="hidden" name="meetingId" value={meetingId} />
-                <input type="hidden" name="userId" value={userId} />
-                <button type="submit" className="btn">
-                  Remove member
-                </button>
-              </form>
-            </div>
-          </div>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`Remove ${name} from group?`}
+        description={`They'll lose access to this group. Their past messages will show as "Removed user".`}
+        titleId="remove-member-title"
+      >
+        <div className="modal-actions">
+          <button type="button" className="pill" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+          <form action={removeMeetingMember}>
+            <input type="hidden" name="meetingId" value={meetingId} />
+            <input type="hidden" name="userId" value={userId} />
+            <button type="submit" className="btn">
+              Remove buddy
+            </button>
+          </form>
         </div>
-      ) : null}
+      </Modal>
     </>
   );
 }
@@ -1080,29 +1075,25 @@ export function DeleteGroupButton({ meetingId, subject }: { meetingId: string; s
         Delete group
       </button>
 
-      {open ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-group-title">
-          <div className="modal">
-            <h3 id="delete-group-title" style={{ marginTop: 0 }}>
-              Delete this study group?
-            </h3>
-            <p style={{ color: "#555" }}>
-              Permanently remove <b>{subject}</b>, its chat history, and all member access. This cannot be undone.
-            </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button type="button" className="pill" onClick={() => setOpen(false)}>
-                Cancel
-              </button>
-              <form action={deleteMeeting}>
-                <input type="hidden" name="meetingId" value={meetingId} />
-                <button type="submit" className="btn">
-                  Delete group
-                </button>
-              </form>
-            </div>
-          </div>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Delete this study group?"
+        description={`Permanently remove ${subject}, its chat history, and all member access. This cannot be undone.`}
+        titleId="delete-group-title"
+      >
+        <div className="modal-actions">
+          <button type="button" className="pill" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+          <form action={deleteMeeting}>
+            <input type="hidden" name="meetingId" value={meetingId} />
+            <button type="submit" className="btn">
+              Delete group
+            </button>
+          </form>
         </div>
-      ) : null}
+      </Modal>
     </>
   );
 }

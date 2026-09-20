@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-09-20T01:34:32.065Z",
+  "exportedAt": "2026-09-20T02:15:25.183Z",
   "users": [
     {
       "email": "jsmith@auburn.edu",
@@ -25,9 +25,9 @@
     {
       "email": "alex@auburn.edu",
       "password": "Password1!",
-      "firstName": "Alex",
-      "lastName": "Nguyen",
-      "pronouns": "he/him",
+      "firstName": "Alexxis",
+      "lastName": "Jones",
+      "pronouns": "she/her",
       "year": "Junior",
       "major": "Software Engineering",
       "university": "Georgia Institute of Technology-Main Campus",
@@ -66,14 +66,14 @@
       "email": "henry@auburn.edu",
       "password": "Password1!",
       "firstName": "Henry",
-      "lastName": "Park",
+      "lastName": "Lam",
       "pronouns": "he/him",
-      "year": "Junior",
-      "major": "Computer Science",
-      "university": "University of Georgia",
-      "bio": "Always down for a late library session.",
-      "needHelp": "Physics 1",
-      "canHelp": "Intro to Programming",
+      "year": "Senior",
+      "major": "Software Engineering",
+      "university": "Auburn University",
+      "bio": "Ramen\r\nLeague of Legends",
+      "needHelp": "Computer Architecture",
+      "canHelp": "Calc 1, Calc 2, Intro to Programming, Algorithms, Computer Organization",
       "examCourse": "",
       "examDate": "",
       "examTopics": "",
@@ -1215,11 +1215,6 @@
       "status": "accepted"
     },
     {
-      "fromEmail": "ryanh@auburn.edu",
-      "toEmail": "bryanm@auburn.edu",
-      "status": "accepted"
-    },
-    {
       "fromEmail": "aidenb@auburn.edu",
       "toEmail": "bryanm@auburn.edu",
       "status": "accepted"
@@ -1271,11 +1266,6 @@
     },
     {
       "fromEmail": "ryanh@auburn.edu",
-      "toEmail": "duo.lingo@auburn.edu",
-      "status": "accepted"
-    },
-    {
-      "fromEmail": "ryanh@auburn.edu",
       "toEmail": "chatgpt.meme@auburn.edu",
       "status": "accepted"
     },
@@ -1322,6 +1312,81 @@
     {
       "fromEmail": "ryanh@auburn.edu",
       "toEmail": "marlon@streamer.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "marlon@streamer.edu",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "marlon@streamer.edu",
+      "toEmail": "kaicenat@streamer.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "marlon@streamer.edu",
+      "toEmail": "ishowspeed@sewey.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "messi@intermiami.org",
+      "toEmail": "cr7@alnassr.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "messi@intermiami.org",
+      "toEmail": "ishowspeed@sewey.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "messi@intermiami.org",
+      "toEmail": "jynxzi@siegechamp.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "ishowspeed@sewey.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "bryanm@auburn.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "lamineyamal@fcbarca.org",
+      "status": "pending"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "mbappe@realmadrid.org",
+      "status": "pending"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "sonming@lafc.org",
+      "status": "pending"
+    },
+    {
+      "fromEmail": "cr7@alnassr.org",
+      "toEmail": "bellingham@realmadrid.org",
+      "status": "pending"
+    },
+    {
+      "fromEmail": "ishowspeed@sewey.org",
+      "toEmail": "kaicenat@streamer.edu",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "kaicenat@streamer.edu",
+      "toEmail": "jynxzi@siegechamp.org",
+      "status": "accepted"
+    },
+    {
+      "fromEmail": "aidenb@auburn.edu",
+      "toEmail": "henry@auburn.edu",
       "status": "pending"
     }
   ]

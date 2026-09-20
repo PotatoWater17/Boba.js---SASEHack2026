@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Modal } from "@/modal";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -54,15 +55,6 @@ export function DashCalendar({
 
   const picked = open ? byDate.get(open) || [] : [];
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(null);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
   return (
     <>
       <div className="cal">
@@ -98,48 +90,35 @@ export function DashCalendar({
         </div>
       </div>
 
-      {open ? (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cal-pop-title"
-          onClick={() => setOpen(null)}
-        >
-          <div className="modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-            <h3 id="cal-pop-title" style={{ marginTop: 0, marginBottom: 6 }}>
-              {prettyDate(open)}
-            </h3>
-            {picked.length === 0 ? (
-              <p className="text-muted">No meetups this day.</p>
-            ) : (
-              <div className="dash-meet-list" style={{ margin: "12px 0 16px" }}>
-                {picked.map((m) => (
-                  <Link key={m.id} href={`/meetings/${m.id}`} className="dash-meet">
-                    <div className="dash-meet-main">
-                      <b>
-                        {m.subject}
-                        {m.topic ? ` — ${m.topic}` : ""}
-                      </b>
-                      <div className="dash-meet-meta">
-                        {m.time} · {m.location}
-                      </div>
-                    </div>
-                    <span className="dash-meet-count">
-                      {m.size}/{m.maxSize}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" className="pill" onClick={() => setOpen(null)}>
-                Close
-              </button>
-            </div>
+      <Modal
+        open={Boolean(open)}
+        onClose={() => setOpen(null)}
+        title={open ? prettyDate(open) : ""}
+        titleId="cal-pop-title"
+      >
+        {picked.length === 0 ? (
+          <p className="text-muted">No meetups this day.</p>
+        ) : (
+          <div className="dash-meet-list" style={{ margin: "0 0 16px" }}>
+            {picked.map((m) => (
+              <Link key={m.id} href={`/meetings/${m.id}`} className="dash-meet">
+                <div className="dash-meet-main">
+                  <b>
+                    {m.subject}
+                    {m.topic ? ` — ${m.topic}` : ""}
+                  </b>
+                  <div className="dash-meet-meta">
+                    {m.time} · {m.location}
+                  </div>
+                </div>
+                <span className="dash-meet-count">
+                  {m.size}/{m.maxSize}
+                </span>
+              </Link>
+            ))}
           </div>
-        </div>
-      ) : null}
+        )}
+      </Modal>
     </>
   );
 }

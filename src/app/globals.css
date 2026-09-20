@@ -1209,10 +1209,25 @@ button.pill {
 }
 
 .hero {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+  align-items: center;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 24px;
+}
+
+.hero-img {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 4px solid var(--accent);
+  background: var(--offwhite);
+  display: block;
 }
 
 .about-hero-main {
@@ -1222,8 +1237,15 @@ button.pill {
 
 @media (max-width: 640px) {
   .hero {
+    grid-template-columns: 1fr;
     text-align: center;
     padding: 16px;
+    gap: 16px;
+  }
+
+  .hero-img {
+    margin: 0 auto;
+    max-width: 180px;
   }
 
   .brand-lockup-lg {
@@ -1528,28 +1550,95 @@ button.pill {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 50;
+  z-index: 1000;
 }
 
 .modal {
   width: 100%;
   max-width: 400px;
+  max-height: 85vh;
+  overflow: auto;
   background: var(--white);
   border-radius: 14px;
   border: 1px solid var(--line);
   padding: 20px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  text-align: left;
 }
 
 .people-modal {
   max-width: 520px;
-  max-height: 85vh;
-  overflow: auto;
+}
+
+.modal-centered {
+  text-align: center;
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.modal-head-text {
+  min-width: 0;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.modal-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.modal-close:hover {
+  color: var(--ink);
+}
+
+.modal-body {
+  text-align: left;
+}
+
+.modal-centered .modal-body {
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.modal-centered .modal-actions {
+  justify-content: center;
 }
 
 .people-modal-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
@@ -1588,6 +1677,70 @@ button.pill {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.mutual-hit {
+  text-decoration: none;
+  color: inherit;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.mutual-hit:hover {
+  background: var(--bubble-mine);
+}
+
+.mutual-hit .avatar {
+  flex-shrink: 0;
+}
+
+.mutual-hit .people-hit-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  align-items: flex-start;
+}
+
+.mutual-buddies-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.mutual-buddies-search {
+  margin: 0;
+}
+
+.mutual-buddies-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(42vh, 360px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.modal-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-pager-info {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  flex: 1 1 auto;
+}
+
+.modal-pager .pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .people-hit-main span {
@@ -2183,9 +2336,36 @@ button.cal-day:focus-visible {
 
 .found-mini {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   text-align: left;
+}
+
+.found-mini-form {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.found-mini-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  min-height: 42px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.found-mini-form .found-mini-action {
+  width: 112px;
+}
+
+.found-mini-status {
+  padding: 10px 12px;
+  font-size: inherit;
+  font-weight: 600;
 }
 
 .found-mini-main {
@@ -2387,6 +2567,47 @@ button.cal-day:focus-visible {
   margin-top: 2px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.chat-row-group {
+  align-items: flex-start;
+}
+
+.chat-row-group .chat-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-row-group .chat-row-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.chat-row-group .chat-row-preview {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.chat-row-group .chat-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+}
+
+.chat-row-group .chat-row-foot .chat-row-meta {
+  margin-top: 0;
+}
+
+.chat-row-group .chat-row-foot .meet-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .group-avatar {

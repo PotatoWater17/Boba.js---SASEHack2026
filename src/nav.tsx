@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { href: "/", label: "About", shortLabel: "About" },
-  { href: "/dashboard", label: "Dashboard", shortLabel: "Home" },
+  { href: "/", label: "About StudyBuddyBoard", shortLabel: "About" },
+  { href: "/dashboard", label: "Buddy Board", shortLabel: "Board" },
   { href: "/find", label: "Find Buddies", shortLabel: "Find" },
   { href: "/friends", label: "My Buddies", shortLabel: "Buddies" },
-  { href: "/groups", label: "My Study Buddy", shortLabel: "Groups" },
+  { href: "/groups", label: "My Study Buddy Groups", shortLabel: "Groups" },
 ];
 
 export function NavLinks({
@@ -66,7 +66,8 @@ export function NavLinks({
       })}
       {isAdmin ? (
         <Link href="/admin" className={`pill${pathname.startsWith("/admin") ? " active" : ""}`}>
-          Admin
+          <span className="nav-label-full">Admin Buddies</span>
+          <span className="nav-label-short">Admin</span>
         </Link>
       ) : null}
     </div>

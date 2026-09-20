@@ -24,6 +24,14 @@ export default async function IntroPage() {
       <div className="about-hero-stage motion-hero-stage">
         <div className="page about-hero-wrap">
           <div className="hero about-hero">
+            <Image
+              src="/teddy-bear-face.jpg"
+              alt="StudyBuddyBoard teddy mascot"
+              width={440}
+              height={440}
+              className="hero-img motion-hero-item motion-hero-d1"
+              priority
+            />
             <div className="about-hero-main">
               <p className="eyebrow motion-hero-item motion-hero-d2">Built for college students</p>
               <BrandLockup size="lg" titleAs="h1" className="motion-hero-item motion-hero-d3" />
@@ -33,7 +41,7 @@ export default async function IntroPage() {
               </p>
               <div className="about-hero-actions motion-hero-item motion-hero-d5">
                 <Link className="btn-accent" href={me ? "/dashboard" : "/signup"}>
-                  {me ? "Go to dashboard" : "Get started"}
+                  {me ? "Go to Buddy Board" : "Get started"}
                 </Link>
                 {!me ? (
                   <Link className="btn" href="/login">

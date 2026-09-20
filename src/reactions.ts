@@ -80,7 +80,7 @@ export function normalizeReactionEmoji(raw: string): string | null {
   const emoji = [...raw.trim()].slice(0, 4).join("");
   if (!emoji) return null;
   if (/[<>"'\\]/.test(emoji)) return null;
-  if (EMOJI_KEYBOARD.includes(emoji)) return emoji;
+  if ((EMOJI_KEYBOARD as readonly string[]).includes(emoji)) return emoji;
   return null;
 }
 

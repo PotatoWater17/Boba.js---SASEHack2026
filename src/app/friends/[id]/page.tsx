@@ -39,7 +39,7 @@ export default async function FriendChatPage({
       ],
     },
   });
-  if (!bond) notFound();
+  if (!bond) redirect(`/profile/${friend.id}?reconnect=1`);
 
   const messages = await prisma.directMessage.findMany({
     where: {

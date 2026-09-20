@@ -14,6 +14,7 @@ import {
   blockedByMe,
   blockedUserIds,
   clearUser,
+  ensureAcceptedFriendship,
   formatTimeInput,
   getMe,
   hashPassword,
@@ -870,6 +871,7 @@ export async function blockUser(formData: FormData) {
 
   await prisma.friendship.deleteMany({
     where: {
+      status: "pending",
       OR: [
         { fromId: me.id, toId: userId },
         { fromId: userId, toId: me.id },
@@ -906,6 +908,7 @@ export async function unblockUser(formData: FormData) {
   await prisma.block.delete({
     where: { blockerId_blockedId: { blockerId: me.id, blockedId: userId } },
   });
+  await ensureAcceptedFriendship(me.id, userId);
   redirect(next);
 }
 

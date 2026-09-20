@@ -165,15 +165,15 @@ export function PhotoCropper({
       onClick={onCancel}
     >
       <div className="modal photo-crop-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="photo-crop-head">
-          <h2 className="page-title" style={{ margin: 0, fontSize: 20 }}>
-            Adjust photo
-          </h2>
-          <button type="button" className="dm-preview-x" onClick={onCancel} aria-label="Close">
+        <div className="modal-head">
+          <div className="modal-head-text">
+            <h2 className="modal-title">Adjust photo</h2>
+            <p className="modal-description">Drag to reposition. Use the slider to zoom in or out.</p>
+          </div>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">
             ×
           </button>
         </div>
-        <p className="photo-crop-hint">Drag to reposition. Use the slider to zoom in or out.</p>
         <div
           className={`photo-crop-viewport${dragging ? " dragging" : ""}`}
           onPointerDown={onPointerDown}

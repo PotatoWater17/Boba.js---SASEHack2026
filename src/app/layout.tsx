@@ -15,7 +15,7 @@ import "../motion/motion.css";
 
 export const metadata: Metadata = {
   title: "StudyBuddyBoard",
-  description: "Fuel the grind. Find study groups with classmates.",
+  description: "Fuel the grind. Find study groups and buddies on campus.",
 };
 
 export const viewport: Viewport = {

@@ -26,7 +26,7 @@ const features = [
   {
     icon: <MatchIcon />,
     title: "Give & get help",
-    body: "List what you're stuck on and what you can teach. We match you with people who actually fit.",
+    body: "List what you're stuck on and what you can teach. We match you with buddies who actually fit.",
   },
   {
     icon: <SparkIcon />,
@@ -43,7 +43,7 @@ const reasons = [
   },
   {
     icon: <PeopleIcon />,
-    title: "Find your people",
+    title: "Find your buddies",
     body: "See who’s going, check profiles for classes they can help with, and join a group that fits you.",
   },
   {
@@ -71,7 +71,7 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
         <section className="section about-panel">
           <h2 className="section-title">Built for real study sessions</h2>
           <p className="lead feature-lead">
-            Everything you need to find the right people — without the clutter of a social network.
+            Everything you need to find the right buddies — without the clutter of a social network.
           </p>
           <div className="feature-grid">
             {features.map((item, i) => (
@@ -113,7 +113,7 @@ export function AboutSections({ loggedIn }: { loggedIn: boolean }) {
             Make an account with your school email and jump into a meetup for your next exam.
           </p>
           <Link className="btn-accent" href={loggedIn ? "/dashboard" : "/signup"}>
-            {loggedIn ? "Open dashboard" : "Create an account"}
+            {loggedIn ? "Open Buddy Board" : "Create an account"}
           </Link>
         </section>
       </ScrollReveal>

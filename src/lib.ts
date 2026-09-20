@@ -89,6 +89,39 @@ export async function areFriends(a: string, b: string) {
   return Boolean(bond);
 }
 
+/** Restore an accepted buddy bond after unblock when chat history exists. */
+export async function ensureAcceptedFriendship(a: string, b: string) {
+  if (await isBlockedBetween(a, b)) return false;
+
+  const existing = await prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { fromId: a, toId: b },
+        { fromId: b, toId: a },
+      ],
+    },
+  });
+  if (existing?.status === "accepted") return true;
+  if (existing?.status === "pending") return false;
+
+  const hadDm = await prisma.directMessage.findFirst({
+    where: {
+      OR: [
+        { fromId: a, toId: b },
+        { fromId: b, toId: a },
+      ],
+    },
+  });
+  if (!hadDm) return false;
+
+  if (existing) {
+    await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
+  } else {
+    await prisma.friendship.create({ data: { fromId: a, toId: b, status: "accepted" } });
+  }
+  return true;
+}
+
 export async function isBlockedBetween(a: string, b: string) {
   if (a === b) return false;
   const block = await prisma.block.findFirst({
@@ -107,6 +140,62 @@ export async function blockedByMe(meId: string, otherId: string) {
     where: { blockerId_blockedId: { blockerId: meId, blockedId: otherId } },
   });
   return Boolean(block);
+}
+
+/** Profiles the current user has blocked (most recent first). */
+export async function usersBlockedByMe(meId: string) {
+  const rows = await prisma.block.findMany({
+    where: { blockerId: meId },
+    include: {
+      blocked: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          university: true,
+          year: true,
+          photoKey: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((row) => row.blocked);
+}
+
+async function acceptedFriendIds(userId: string) {
+  const rows = await prisma.friendship.findMany({
+    where: {
+      status: "accepted",
+      OR: [{ fromId: userId }, { toId: userId }],
+    },
+    select: { fromId: true, toId: true },
+  });
+  const ids = new Set<string>();
+  for (const row of rows) {
+    ids.add(row.fromId === userId ? row.toId : row.fromId);
+  }
+  return ids;
+}
+
+/** Buddies shared by both users (excluding either user). */
+export async function mutualConnections(a: string, b: string) {
+  if (a === b) return [];
+  const [aFriends, bFriends] = await Promise.all([acceptedFriendIds(a), acceptedFriendIds(b)]);
+  const mutualIds = [...aFriends].filter((id) => bFriends.has(id) && id !== a && id !== b);
+  if (!mutualIds.length) return [];
+  return prisma.user.findMany({
+    where: { id: { in: mutualIds } },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      university: true,
+      year: true,
+      photoKey: true,
+    },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
 }
 
 /** User ids that cannot interact with `userId` because of a block either way. */
@@ -341,9 +430,19 @@ export function examMeetupScore(
   const course = (prefs.examCourse || "").trim();
   const topics = splitList(prefs.examTopics || "");
   const meetTopics = splitList(meetup.topic);
+  let relevant = false;
 
-  if (course && classOverlap(meetup.subject, course)) score += 100;
-  if (topics.length && topicListOverlap(topics, meetTopics) > 0) score += 40;
+  if (course && classOverlap(meetup.subject, course)) {
+    score += 100;
+    relevant = true;
+  }
+  if (topics.length && topicListOverlap(topics, meetTopics) > 0) {
+    score += 40;
+    relevant = true;
+  }
+
+  if (course && !relevant) return 0;
+
   if (prefs.studyStyle?.trim() && meetup.style === prefs.studyStyle) score += 35;
   if (
     prefs.university?.trim() &&
@@ -376,24 +475,38 @@ export function buddyMatch(
   const myExamTopics = splitList(me.examTopics || "");
   const theirExamTopics = splitList(other.examTopics || "");
   const examCourse = (me.examCourse || "").trim();
+  const examFocused = Boolean(examCourse);
   const reasons: string[] = [];
   let score = 0;
+  let courseRelevant = false;
+
+  const markCourseRelevant = () => {
+    courseRelevant = true;
+  };
+
+  const countsForExam = (course: string) => !examFocused || classOverlap(course, examCourse);
 
   for (const c of myNeed) {
+    if (!countsForExam(c)) continue;
     if (theirHelp.some((x) => classOverlap(x, c))) {
       score += 100;
+      markCourseRelevant();
       pushReason(reasons, `can help with ${c}`);
     }
   }
   for (const c of myHelp) {
+    if (!countsForExam(c)) continue;
     if (theirNeed.some((x) => classOverlap(x, c))) {
       score += 80;
+      markCourseRelevant();
       pushReason(reasons, `needs help in ${c}`);
     }
   }
   for (const c of myNeed) {
+    if (!countsForExam(c)) continue;
     if (theirNeed.some((x) => classOverlap(x, c))) {
       score += 40;
+      markCourseRelevant();
       if (!reasons.some((r) => r.toLowerCase().includes(c.toLowerCase()))) {
         pushReason(reasons, `also grinding ${c}`);
       }
@@ -403,14 +516,17 @@ export function buddyMatch(
   if (examCourse) {
     if (theirHelp.some((x) => classOverlap(x, examCourse))) {
       score += 130;
+      markCourseRelevant();
       pushReason(reasons, `can tutor ${examCourse}`);
     }
     if (other.examCourse && classOverlap(other.examCourse, examCourse)) {
       score += 90;
+      markCourseRelevant();
       pushReason(reasons, `same exam: ${examCourse}`);
     }
     if (theirNeed.some((x) => classOverlap(x, examCourse))) {
       score += 50;
+      markCourseRelevant();
       pushReason(reasons, `also prepping ${examCourse}`);
     }
   }
@@ -419,17 +535,24 @@ export function buddyMatch(
     const topicHits = topicListOverlap(myExamTopics, theirExamTopics);
     if (topicHits > 0) {
       score += topicHits * 35;
+      markCourseRelevant();
       pushReason(reasons, `${topicHits} shared exam topic${topicHits === 1 ? "" : "s"}`);
     }
-    const theirTopicPool = [...theirExamTopics, ...splitList(other.canHelp), ...splitList(other.needHelp)];
-    const prepHits = topicListOverlap(myExamTopics, theirTopicPool);
-    if (prepHits > topicHits) {
-      score += (prepHits - topicHits) * 15;
-      pushReason(reasons, "covers your weak topics");
+    if (!examFocused) {
+      const theirTopicPool = [...theirExamTopics, ...splitList(other.canHelp), ...splitList(other.needHelp)];
+      const prepHits = topicListOverlap(myExamTopics, theirTopicPool);
+      if (prepHits > topicHits) {
+        score += (prepHits - topicHits) * 15;
+        pushReason(reasons, "covers your weak topics");
+      }
     }
   }
 
-  if (me.examDate && other.examDate) {
+  if (
+    me.examDate &&
+    other.examDate &&
+    (!examFocused || (other.examCourse && classOverlap(other.examCourse, examCourse)))
+  ) {
     const gap = Math.abs(daysBetweenDates(me.examDate, other.examDate) ?? 999);
     if (gap <= 3) {
       score += 60;
@@ -443,19 +566,14 @@ export function buddyMatch(
     }
   }
 
-  if (me.studyStyle?.trim() && other.studyStyle?.trim() && me.studyStyle === other.studyStyle) {
-    score += 30;
-    pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
-  }
-
-  if (meetups.length && (examCourse || myExamTopics.length || me.studyStyle)) {
+  if (meetups.length && (examCourse || myExamTopics.length)) {
     for (const m of meetups) {
       const subjectMatch = examCourse && classOverlap(m.subject, examCourse);
       const meetTopics = splitList(m.topic);
       const topicMatch = myExamTopics.length > 0 && topicListOverlap(myExamTopics, meetTopics) > 0;
-      const styleMatch = Boolean(me.studyStyle?.trim() && m.style === me.studyStyle);
-      if (!subjectMatch && !topicMatch && !styleMatch) continue;
+      if (!subjectMatch && !topicMatch) continue;
 
+      markCourseRelevant();
       if (subjectMatch) {
         score += 45;
         pushReason(reasons, `in ${m.subject} study group`);
@@ -464,9 +582,9 @@ export function buddyMatch(
         score += 30;
         pushReason(reasons, "group covers your topics");
       }
-      if (styleMatch) {
+      if (me.studyStyle?.trim() && m.style === me.studyStyle) {
         score += 20;
-        pushReason(reasons, `group uses ${m.style.toLowerCase()}`);
+        pushReason(reasons, `group uses ${me.studyStyle.toLowerCase()}`);
       }
       if (me.examDate && m.meetDate) {
         const beforeExam = daysBetweenDates(m.meetDate, me.examDate);
@@ -478,13 +596,27 @@ export function buddyMatch(
     }
   }
 
-  if (me.university && other.university && me.university.toLowerCase() === other.university.toLowerCase()) {
-    score += 50;
+  if (
+    courseRelevant &&
+    me.studyStyle?.trim() &&
+    other.studyStyle?.trim() &&
+    me.studyStyle === other.studyStyle
+  ) {
+    score += 30;
+    pushReason(reasons, `prefers ${me.studyStyle.toLowerCase()}`);
+  }
+
+  if (courseRelevant && me.university && other.university && me.university.toLowerCase() === other.university.toLowerCase()) {
+    score += 30;
     pushReason(reasons, "same campus");
   }
-  if (me.major && other.major && me.major.toLowerCase() === other.major.toLowerCase()) {
+  if (courseRelevant && me.major && other.major && me.major.toLowerCase() === other.major.toLowerCase()) {
     score += 20;
     pushReason(reasons, "same major");
+  }
+
+  if (examFocused && !courseRelevant) {
+    return { score: 0, reasons: [] };
   }
 
   return { score, reasons };

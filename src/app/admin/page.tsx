@@ -185,7 +185,7 @@ export default async function AdminPage({
     <div className="page admin-page">
       <header className="page-header admin-header">
         <div>
-          <h1 className="page-title">Admin Dashboard</h1>
+          <h1 className="page-title">Admin Buddies</h1>
           <p>Platform health, user lookup, and moderation tools.</p>
         </div>
         <div className="admin-header-meta">
@@ -231,7 +231,7 @@ export default async function AdminPage({
         <div className="admin-stat-card">
           <div className="admin-stat-label">Buddy links</div>
           <div className="admin-stat-value">{friendships.toLocaleString()}</div>
-          <div className="admin-stat-sub">{pendingFriends} pending requests</div>
+          <div className="admin-stat-sub">{pendingFriends} pending buddy requests</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Study groups</div>

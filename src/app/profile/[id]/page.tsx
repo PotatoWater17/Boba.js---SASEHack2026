@@ -5,7 +5,18 @@ import { ClassBubbles, ExamPrepFields, MajorPicker, UniversityPicker, YearPicker
 import { acceptFriend, addFriend, blockUser, changePassword, removeFriend, unblockUser, updateProfile } from "@/app/actions";
 import { formatAccountId } from "@/account-id";
 import { isUserAdmin } from "@/admin";
-import { blockedByMe, formatMeetDate, getMe, initials, isBlockedBetween, prisma, splitList } from "@/lib";
+import {
+  blockedByMe,
+  blockedUserIds,
+  formatMeetDate,
+  getMe,
+  initials,
+  isBlockedBetween,
+  mutualConnections,
+  prisma,
+  splitList,
+} from "@/lib";
+import { MutualConnectionsButton } from "./mutual-connections";
 import { PhotoField } from "./photo";
 
 export default async function ProfilePage({
@@ -13,13 +24,13 @@ export default async function ProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ edit?: string; error?: string; pw?: string; blocked?: string }>;
+  searchParams: Promise<{ edit?: string; error?: string; pw?: string; blocked?: string; reconnect?: string }>;
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
 
   const { id } = await params;
-  const { edit, error, pw, blocked: blockedNotice } = await searchParams;
+  const { edit, error, pw, blocked: blockedNotice, reconnect } = await searchParams;
   const userId = id === "me" ? me.id : id;
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -46,6 +57,11 @@ export default async function ProfilePage({
   const theySent = friendship?.status === "pending" && friendship.toId === me.id;
   const iBlocked = isMe ? false : await blockedByMe(me.id, user.id);
   const blocked = isMe ? false : await isBlockedBetween(me.id, user.id);
+  let visibleMutuals: Awaited<ReturnType<typeof mutualConnections>> = [];
+  if (friends && !blocked) {
+    const blockedIds = await blockedUserIds(me.id);
+    visibleMutuals = (await mutualConnections(me.id, user.id)).filter((person) => !blockedIds.has(person.id));
+  }
 
   if (editing) {
     return (
@@ -203,6 +219,9 @@ export default async function ProfilePage({
       </dl>
 
       {!isMe && blockedNotice === "1" ? <p className="ok">User blocked.</p> : null}
+      {!isMe && reconnect === "1" ? (
+        <p className="err">You&apos;re not buddies anymore. Add them again to open your chat.</p>
+      ) : null}
       {!isMe && error === "blocked" ? <p className="err">You can&apos;t interact with this user.</p> : null}
 
       {!isMe ? (
@@ -228,7 +247,10 @@ export default async function ProfilePage({
               </Link>
               {friends ? (
                 <>
-                  <span className="pill active profile-action-btn">Buddies</span>
+                  <MutualConnectionsButton
+                    profileName={user.firstName}
+                    mutuals={visibleMutuals}
+                  />
                   <form action={removeFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
                     <button type="submit" className="pill profile-action-btn">
@@ -241,7 +263,7 @@ export default async function ProfilePage({
                   <form action={acceptFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
                     <button type="submit" className="btn profile-action-btn">
-                      Accept request
+                      Accept buddy
                     </button>
                   </form>
                   <form action={removeFriend} className="profile-action-form">

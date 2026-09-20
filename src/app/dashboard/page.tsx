@@ -155,9 +155,9 @@ export default async function DashboardPage({
 
       <section className="dash-section">
         <div className="dash-section-head">
-          <h2>Buddies</h2>
+          <h2>My Buddies</h2>
           <Link href="/friends" className="dash-hint" style={{ textDecoration: "underline" }}>
-            {friends.length} connected · view all chats
+            {friends.length} buddies · view all chats
           </Link>
         </div>
         {incoming.length > 0 ? (

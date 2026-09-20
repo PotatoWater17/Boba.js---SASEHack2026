@@ -257,7 +257,7 @@ export default async function FindBuddiesPage({
                       </span>
                     </span>
                   </Link>
-                  <Link className="btn" href={`/meetings/${g.id}`}>
+                  <Link className="btn found-mini-action" href={`/meetings/${g.id}`}>
                     View
                   </Link>
                 </div>
@@ -309,25 +309,25 @@ export default async function FindBuddiesPage({
                       </span>
                     </Link>
                     {bond?.status === "accepted" ? (
-                      <Link className="pill active" href={`/friends/${user.id}`}>
+                      <Link className="btn found-mini-action" href={`/friends/${user.id}`}>
                         Message
                       </Link>
                     ) : bond?.status === "pending" && bond.toId === me.id ? (
-                      <form action={acceptFriend}>
+                      <form action={acceptFriend} className="found-mini-form">
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="next" value={stay} />
-                        <button className="btn" type="submit">
+                        <button className="btn found-mini-action" type="submit">
                           Accept
                         </button>
                       </form>
                     ) : bond?.status === "pending" ? (
-                      <span className="pill">Sent</span>
+                      <span className="pill found-mini-action found-mini-status">Sent</span>
                     ) : (
-                      <form action={addFriend}>
+                      <form action={addFriend} className="found-mini-form">
                         <input type="hidden" name="userId" value={user.id} />
                         <input type="hidden" name="next" value={stay} />
-                        <button className="btn" type="submit">
-                          Add buddy
+                        <button className="btn found-mini-action" type="submit">
+                          Add Buddy
                         </button>
                       </form>
                     )}

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Avatar } from "@/avatar";
 import { purgeOrphanMeetings } from "@/meeting-cleanup";
 import { formatMeetDate, getMe, groupKindLabel, groupMessagePreview, prisma, timeAgo } from "@/lib";
 
@@ -91,7 +90,7 @@ export default async function GroupsPage({
   return (
     <div className="page chats-page" style={{ maxWidth: 640 }}>
       <header className="page-header" style={{ textAlign: "center" }}>
-        <h1 className="page-title">My Study Buddy</h1>
+        <h1 className="page-title">My Study Buddy Groups</h1>
         <p>Meetups you signed up for — open one to chat.</p>
       </header>
 
@@ -138,31 +137,31 @@ export default async function GroupsPage({
               <Link
                 key={m.id}
                 href={`/meetings/${m.id}`}
-                className={`chat-row${unread ? " unread" : ""}`}
+                className={`chat-row chat-row-group${unread ? " unread" : ""}`}
               >
                 <span className="avatar group-avatar">{m.subject.slice(0, 2).toUpperCase()}</span>
                 <span className="chat-row-text">
-                  <b>
+                  <span className="chat-row-title">
                     {m.subject}
                     {m.topic ? `: ${m.topic.split(",")[0].trim()}` : ""}
-                  </b>{" "}
-                  <span className="chat-row-preview">{preview}</span>
-                  <span className="chat-row-meta">
-                    {m.meetDate ? `${formatMeetDate(m.meetDate)} · ` : ""}
-                    {m.time} · {m.location}
-                    {when ? ` · ${when}` : ""}
                   </span>
-                  <span className="meet-badges" style={{ marginTop: 6 }}>
-                    <span className={`badge kind-${m.groupKind || "small"}`}>
-                      {groupKindLabel(m.groupKind || "small")}
+                  <span className="chat-row-preview">
+                    {preview}
+                    {when ? <span className="chat-row-time"> · {when}</span> : null}
+                  </span>
+                  <div className="chat-row-foot">
+                    {(m.meetDate || m.time || m.location) ? (
+                      <span className="chat-row-meta">
+                        {[formatMeetDate(m.meetDate), m.time, m.location].filter(Boolean).join(" · ")}
+                      </span>
+                    ) : null}
+                    <span className="meet-badges">
+                      <span className={`badge kind-${m.groupKind || "small"}`}>
+                        {groupKindLabel(m.groupKind || "small")}
+                      </span>
+                      {m.university ? <span className="badge uni">{m.university}</span> : null}
                     </span>
-                    {m.university ? <span className="badge uni">{m.university}</span> : null}
-                  </span>
-                  <span className="dash-meet-avs" style={{ marginTop: 8 }}>
-                    {m.members.slice(0, 5).map((mem) => (
-                      <Avatar key={mem.id} user={mem.user} style={{ width: 28, height: 28, fontSize: 10 }} />
-                    ))}
-                  </span>
+                  </div>
                 </span>
                 {unread > 0 ? <span className="chat-badge">{unread > 99 ? "99+" : unread}</span> : null}
               </Link>

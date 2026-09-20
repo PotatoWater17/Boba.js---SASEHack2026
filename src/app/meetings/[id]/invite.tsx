@@ -94,7 +94,7 @@ export function InviteBuddies({
       <div className="card" style={{ marginTop: 14 }}>
         <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
         <p className="text-muted" style={{ margin: 0 }}>
-          No buddies left to invite. Add people from Find your buddies first.
+          No buddies left to invite. Add buddies from Find Your Buddies first.
         </p>
       </div>
     );
@@ -105,7 +105,7 @@ export function InviteBuddies({
       <h3 style={{ marginTop: 0 }}>Invite buddies</h3>
       <p className="text-muted" style={{ margin: "0 0 12px", fontSize: 14 }}>
         {ownerOnly
-          ? "Private group — only you can invite people. They'll get a chat invite and have to accept it."
+          ? "Private group — only you can invite buddies. They'll get a chat invite and have to accept it."
           : "They'll get a chat invite and have to accept it."}
       </p>
       <input

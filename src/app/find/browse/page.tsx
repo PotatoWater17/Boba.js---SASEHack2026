@@ -31,6 +31,7 @@ export default async function BrowseMeetupsPage({
 }) {
   const me = await getMe();
   if (!me) redirect("/login");
+  const myUniversity = me.university;
 
   await purgeOrphanMeetings();
 
@@ -94,7 +95,7 @@ export default async function BrowseMeetupsPage({
     if (onlyMine) params.set("mine", "1");
     const nextUni = extra?.uni ?? (allSchools ? "all" : uniFilter);
     if (nextUni === "all") params.set("uni", "all");
-    else if (nextUni && nextUni !== me.university) params.set("uni", nextUni);
+    else if (nextUni && nextUni !== myUniversity) params.set("uni", nextUni);
     if (nextPage > 1) params.set("page", String(nextPage));
     const q = params.toString();
     return q ? `/find/browse?${q}` : "/find/browse";

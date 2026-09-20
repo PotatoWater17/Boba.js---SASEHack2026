@@ -248,7 +248,7 @@ export default async function MeetingPage({
         <JoinRequestsPanel meetingId={meeting.id} requests={pendingJoinRequests} />
       ) : null}
 
-      {joined && (!meeting.isPrivate || isOwner) ? (
+      {joined && !full && (!meeting.isPrivate || isOwner) ? (
         <InviteBuddies
           meetingId={meeting.id}
           buddies={inviteBuddies}
@@ -257,7 +257,7 @@ export default async function MeetingPage({
         />
       ) : null}
 
-      <h2>People</h2>
+      <h2>Group Buddies</h2>
       {canViewMembers ? (
         <div className="card meet-people-grid">
           {meeting.members.map((mem) => (

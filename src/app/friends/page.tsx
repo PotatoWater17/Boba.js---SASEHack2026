@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { acceptFriend, removeFriend } from "@/app/actions";
+import { acceptFriend, removeFriend, unblockUser } from "@/app/actions";
 import { Avatar } from "@/avatar";
-import { blockedUserIds, getMe, prisma, timeAgo } from "@/lib";
+import { blockedUserIds, getMe, prisma, timeAgo, usersBlockedByMe } from "@/lib";
 import { PeopleSearch } from "./search";
 
 const FILTERS = [
@@ -11,6 +11,7 @@ const FILTERS = [
   { id: "recent", label: "Recent" },
   { id: "campus", label: "Same campus" },
   { id: "new", label: "No chats yet" },
+  { id: "blocked", label: "Blocked" },
 ] as const;
 
 export default async function FriendsPage({
@@ -31,9 +32,12 @@ export default async function FriendsPage({
     include: { from: true, to: true },
     orderBy: { createdAt: "desc" },
   });
-  const incoming = friendRows.filter(
-    (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
-  );
+  const incoming =
+    filter === "blocked"
+      ? []
+      : friendRows.filter(
+          (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
+        );
   const friends = friendRows
     .filter((row) => row.status === "accepted")
     .map((row) => (row.fromId === me.id ? row.to : row.from))
@@ -56,6 +60,12 @@ export default async function FriendsPage({
     const extras = await prisma.user.findMany({ where: { id: { in: extraIds } } });
     for (const u of extras) known.set(u.id, u);
   }
+
+  const blockedByMe = filter === "blocked" ? await usersBlockedByMe(me.id) : [];
+  const blockedMatches = blockedByMe.filter((user) => {
+    if (!q) return true;
+    return `${user.firstName} ${user.lastName}`.toLowerCase().includes(q);
+  });
 
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const threads = [...known.values()]
@@ -95,10 +105,20 @@ export default async function FriendsPage({
     return qs ? `/friends?${qs}` : "/friends";
   }
 
+  function emptyThreadsMessage() {
+    if (q) return "Nobody matched that search.";
+    if (filter === "unread") return "You've read all messages.";
+    if (filter === "recent") return "No chats in the last 7 days.";
+    if (filter === "campus") return "No buddies at your campus.";
+    if (filter === "new") return "No buddies without messages yet.";
+    if (filter === "blocked") return "You haven't blocked anyone.";
+    return "Nobody matched that search.";
+  }
+
   return (
     <div className="page chats-page">
       <header className="page-header" style={{ textAlign: "center" }}>
-        <h1 className="page-title">Buddies</h1>
+        <h1 className="page-title">My Buddies</h1>
       </header>
 
       {error === "blocked" ? <p className="err">You can&apos;t message that user.</p> : null}
@@ -162,13 +182,48 @@ export default async function FriendsPage({
         </div>
       ) : null}
 
-      {known.size === 0 ? (
+      {filter === "blocked" ? (
+        blockedByMe.length === 0 ? (
+          <div className="card" style={{ textAlign: "center" }}>
+            You haven&apos;t blocked anyone.
+          </div>
+        ) : blockedMatches.length === 0 ? (
+          <div className="card" style={{ textAlign: "center" }}>
+            Nobody matched that search.
+          </div>
+        ) : (
+          <div className="chat-list">
+            {blockedMatches.map((user) => (
+              <div key={user.id} className="chat-row" style={{ justifyContent: "space-between" }}>
+                <Link href={`/profile/${user.id}`} className="chat-row-main">
+                  <Avatar user={user} />
+                  <span className="chat-row-text">
+                    <b>
+                      {user.firstName} {user.lastName}
+                    </b>
+                    <span className="chat-row-preview">
+                      {[user.year, user.university].filter(Boolean).join(" · ") || "Blocked"}
+                    </span>
+                  </span>
+                </Link>
+                <form action={unblockUser} style={{ flexShrink: 0 }}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <input type="hidden" name="next" value="/friends?filter=blocked" />
+                  <button type="submit" className="btn">
+                    Unblock
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )
+      ) : known.size === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
           No buddies yet. <Link href="/find/buddies">Match a buddy</Link> or add someone from a meetup.
         </div>
       ) : threads.length === 0 ? (
         <div className="card" style={{ textAlign: "center" }}>
-          Nobody matched that search.
+          {emptyThreadsMessage()}
         </div>
       ) : (
         <div className="chat-list">
