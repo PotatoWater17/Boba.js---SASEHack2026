@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { href: "/", label: "About" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/find", label: "Find Buddies" },
-  { href: "/friends", label: "My Buddies" },
-  { href: "/groups", label: "My Study Buddy" },
+  { href: "/", label: "About", shortLabel: "About" },
+  { href: "/dashboard", label: "Dashboard", shortLabel: "Home" },
+  { href: "/find", label: "Find Buddies", shortLabel: "Find" },
+  { href: "/friends", label: "My Buddies", shortLabel: "Buddies" },
+  { href: "/groups", label: "My Study Buddy", shortLabel: "Groups" },
 ];
 
 export function NavLinks({
@@ -58,7 +58,8 @@ export function NavLinks({
         const note = link.href === "/friends" ? friends : link.href === "/groups" ? groups : 0;
         return (
           <Link key={link.href} href={link.href} className={`pill${active ? " active" : ""}`}>
-            {link.label}
+            <span className="nav-label-full">{link.label}</span>
+            <span className="nav-label-short">{link.shortLabel}</span>
             {note > 0 ? <span className="nav-note">{note > 9 ? "9+" : note}</span> : null}
           </Link>
         );

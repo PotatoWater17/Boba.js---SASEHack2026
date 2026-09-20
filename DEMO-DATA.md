@@ -219,11 +219,29 @@ Plus dev-team DMs above when viewing as Ryan.
 
 Meet dates are relative to seed time (`dayOffset` in seed). Subjects/locations are stable.
 
+### Meme study groups (chaotic group chat)
+
+Seeded via `scripts/meme-meetups.ts` (10 groups). Meme accounts join as members and argue in chat.
+
+| Host | Subject | Drama |
+|------|---------|-------|
+| Zuck | Intro to Programming | Tech billionaires fight over the whiteboard (Elon, Bill, Steve, Gabe, ChatGPT) |
+| Taylor | Chemistry 101 | Gordon vs Walter “cooking” + Duo stalking + MrBeast bribes |
+| Kendrick | Calc 2 | Kendrick vs Drake beef during u-sub review |
+| Shakespeare | English Comp | Shakespeare vs ChatGPT citation war + Michael Scott |
+| Oppenheimer | Physics 1 | Existential dread vs Einstein vs Elon on Mars |
+| MrBeast | Calc 2 | 24-hour integration livestream with Naruto & Travis Scott |
+| Socrates | Philosophy | Politicians argue; nobody studies |
+| Beyoncé | Statistics | Beyoncé vs Bezos on group project leadership |
+| Marie Curie | Chemistry 1 | Gordon yells at everyone in lab prep |
+| Shrek | Biology | “Get out of my swamp study room” |
+
+Add on existing DB: `npm run db:meme-meetups` (idempotent). Included automatically in `db:reset` / seed.
+
 ### Featured groups (good for live demo)
 
 | Host | Subject | Location | University | Members | Sample chat |
 |------|---------|----------|------------|---------|-------------|
-| Zuck | Intro to Programming | Online (VR headset optional) | Auburn | Zuck, Jordan | “Welcome… I am definitely a real student.” / “bro what” |
 | Alex | Calc 2 | CULC, 2nd floor study pods | Georgia Tech | Alex, Sam, Jordan | Tech meetup, Tuscaloosa drive, Auburn squad |
 | Ryan | Calc 2 | RBD Library, 3rd floor | Auburn | Ryan, Aiden, Bryan, Daniel | Practice exam / print copies / room 302 |
 | Aiden | Data Structures | Shelby Center lobby | Auburn | Aiden, Ryan, Daniel | “Posted this for the team” |
@@ -248,6 +266,7 @@ Seed also creates **15 additional meetings** (`EXTRA` array in `seed.ts`) hosted
 | `db:restore-team` | Upsert 4 dev accounts + mutual friendships (no wipe) |
 | `db:patch-demo` | Fix universities, exam fields, dev/cross-school meetups, dev DMs (idempotent) |
 | `db:ryan-friends` | Ryan’s extended buddies + Ryan-specific DMs (idempotent) |
+| `db:meme-meetups` | Meme study groups + funny group chat threads (idempotent) |
 | `db:refresh-avatars` | Re-fetch profile photos for users missing `photoKey` |
 
 ---

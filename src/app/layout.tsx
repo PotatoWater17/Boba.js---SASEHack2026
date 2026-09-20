@@ -6,6 +6,7 @@ import { Avatar } from "@/avatar";
 import { isUserAdmin } from "@/admin";
 import { getMe, prisma } from "@/lib";
 import { NavLinks } from "@/nav";
+import { NavHeightSync } from "@/nav-height";
 import { ThemeInit, ThemeToggle } from "@/theme";
 import { MessageToasts } from "@/toasts";
 import "./globals.css";
@@ -60,40 +61,46 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning data-theme={themeCookie === "dark" ? "dark" : undefined}>
       <body suppressHydrationWarning>
         <ThemeInit />
+        <NavHeightSync />
         <header className="nav">
-          <Link href="/" className="nav-brand">
-            <b>StudyBuddyBoard</b>
-            <span className="tagline">Fuel The Grind</span>
-          </Link>
+          <div className="nav-bar">
+            <Link href="/" className="nav-brand">
+              <b>StudyBuddyBoard</b>
+              <span className="tagline">Fuel The Grind</span>
+            </Link>
+            <div className="nav-actions">
+              <ThemeToggle />
+              {me ? (
+                <div className="nav-user">
+                  <Link href={`/profile/${me.id}`} title="My profile">
+                    <Avatar user={me} />
+                  </Link>
+                  <form action={logout}>
+                    <button type="submit" className="pill nav-logout" aria-label="Log out">
+                      <span className="nav-logout-full">Log out</span>
+                      <span className="nav-logout-short" aria-hidden="true">
+                        Out
+                      </span>
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="nav-auth-links">
+                  <Link className="btn btn-ghost nav-auth-login" href="/login">
+                    Log in
+                  </Link>
+                  <Link className="btn nav-auth-signup" href="/signup">
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
           {me ? (
             <NavLinks friendNotices={friendNotices} groupNotices={groupNotices} isAdmin={isAdmin} />
           ) : null}
-          <div className="nav-actions">
-            <ThemeToggle />
-            {me ? (
-              <div className="nav-user">
-                <Link href={`/profile/${me.id}`} title="My profile">
-                  <Avatar user={me} />
-                </Link>
-                <form action={logout}>
-                  <button type="submit" className="pill">
-                    Log out
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <div className="nav-auth-links">
-                <Link className="btn btn-ghost" href="/login">
-                  Log in
-                </Link>
-                <Link className="btn" href="/signup">
-                  Sign up
-                </Link>
-              </div>
-            )}
-          </div>
         </header>
-        {children}
+        <main className="site-main">{children}</main>
         {me ? <MessageToasts /> : null}
       </body>
     </html>

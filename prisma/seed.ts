@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import { seedMemeMeetups } from "../scripts/meme-meetups";
 import { backfillAccountNumbers } from "../src/account-id";
 import { AVATAR_DIR } from "../src/files";
 
@@ -945,29 +946,6 @@ async function main() {
 
   await prisma.meeting.create({
     data: {
-      subject: "Intro to Programming",
-      topic: "Metaverse loops, Human emulation",
-      time: "11:11 PM",
-      meetDate: dayOffset(1),
-      location: "Online (VR headset optional)",
-      university: "Auburn University",
-      notes: "Connecting people. Also collecting engagement metrics. Bring laptop.",
-      maxSize: 8,
-      groupKind: "small",
-      style: "Discussion",
-      hostId: zuck.id,
-      members: { create: [{ userId: zuck.id }, { userId: jordan.id }] },
-      messages: {
-        create: [
-          { userId: zuck.id, text: "Welcome to the group. I am definitely a real student." },
-          { userId: jordan.id, text: "bro what" },
-        ],
-      },
-    },
-  });
-
-  await prisma.meeting.create({
-    data: {
       subject: "Calc 2",
       topic: "U-sub, Polar, Vectors",
       time: "6:00 PM",
@@ -1165,9 +1143,12 @@ async function main() {
     });
   }
 
+  const memeMeetups = await seedMemeMeetups(prisma);
+
   await backfillAccountNumbers();
   console.log("seeded. team: ryanh / aidenb / bryanm / danielk @auburn.edu (RyanH, AidenB, BryanM, DanielK)");
   console.log(`meme accounts: ${MEME_ACCOUNTS.length} parody profiles (Password1!) — zuck.meme@auburn.edu, etc.`);
+  console.log(`meme meetups: ${memeMeetups.created} study groups with chaotic group chat`);
   console.log(`avatars: ${avatarHits} meme photos saved, ${avatarMiss} skipped (download failed)`);
 }
 

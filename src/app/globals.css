@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --nav-height: 58px;
   --purple: #6b5cff;
   --purple-dark: #5848e8;
   --accent: #fbbf24;
@@ -58,16 +59,17 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  overflow-x: hidden;
-}
-
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   background: var(--offwhite);
   color: var(--ink);
+}
+
+/* Keep horizontal clip off body so .nav position:sticky works (about page scroll). */
+.site-main {
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 img {
@@ -163,15 +165,20 @@ button {
 .nav {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 100;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--white) 90%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.nav-bar {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--white);
-  border-bottom: 1px solid var(--line);
+  gap: 10px;
+  width: 100%;
 }
 
 .nav-brand {
@@ -331,6 +338,40 @@ button {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.nav-label-short,
+.nav-logout-short {
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-bar {
+    display: contents;
+  }
+
+  .nav-brand {
+    order: 0;
+  }
+
+  .nav-links {
+    order: 1;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .nav-actions {
+    order: 2;
+  }
 }
 
 .pill {
@@ -544,7 +585,8 @@ button.pill {
 .about-hero-stage {
   position: relative;
   z-index: 1;
-  min-height: calc(100svh - 58px);
+  min-height: calc(100svh - var(--nav-height));
+  min-height: calc(100dvh - var(--nav-height));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1238,8 +1280,19 @@ button.pill {
   }
 
   .about-hero-stage {
-    min-height: calc(100svh - 52px);
     padding-top: 16px;
+  }
+
+  .about-sections {
+    padding: 40px 12px 56px;
+  }
+
+  .about-sections > .about-reveal + .about-reveal {
+    margin-top: 48px;
+  }
+
+  .about-sections .about-panel {
+    padding: 20px 16px;
   }
 }
 
@@ -2123,7 +2176,7 @@ button.cal-day:focus-visible {
 
 .chat-room {
   max-width: 860px;
-  height: calc(100dvh - 76px);
+  height: calc(100dvh - var(--nav-height) - 18px);
   padding-top: 12px;
   padding-bottom: 12px;
   display: flex;
@@ -2636,15 +2689,91 @@ button.cal-day:focus-visible {
 
 @media (max-width: 640px) {
   .nav {
-    padding: 10px 12px;
+    padding: 8px 12px 10px;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+
+  .nav-brand {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .nav-brand b {
-    font-size: 16px;
+    font-size: 15px;
+    letter-spacing: -0.03em;
+  }
+
+  .nav-brand .tagline {
+    font-size: 9px;
+    padding: 1px 7px;
+    line-height: 1.25;
+  }
+
+  .nav-actions {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .nav-actions .theme-toggle {
+    min-width: 36px;
+    padding: 8px 10px;
+  }
+
+  .nav-user {
+    gap: 6px;
+  }
+
+  .nav-auth-links {
+    gap: 6px;
+  }
+
+  .nav-auth-links .btn {
+    min-width: 0;
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .nav-auth-login {
+    padding-inline: 10px !important;
+  }
+
+  .nav-label-full,
+  .nav-logout-full {
+    display: none;
+  }
+
+  .nav-label-short,
+  .nav-logout-short {
+    display: inline;
+  }
+
+  .nav-logout {
+    padding: 6px 10px;
+    font-size: 13px;
   }
 
   .nav-links {
     width: 100%;
+    margin-top: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 1px;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-links .pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 13px;
+    padding: 6px 11px;
   }
 
   .page {
@@ -2662,7 +2791,7 @@ button.cal-day:focus-visible {
   }
 
   .chat-room {
-    height: calc(100dvh - 148px);
+    height: calc(100dvh - var(--nav-height) - 24px);
     padding-top: 10px;
     padding-bottom: 10px;
   }
