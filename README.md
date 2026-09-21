@@ -13,7 +13,7 @@ SASEHack 2026 · Auburn University — Ryan · Aiden · Bryan · Daniel
 
 ## For judges
 
-**Live demo:** [https://boba-js-sase-hack2026.vercel.app](https://boba-js-sase-hack2026.vercel.app)
+**Live demo:** [https://studybuddyboard.vercel.app](https://studybuddyboard.vercel.app)
 
 1. Open the live URL (or follow **How to run it** below and use **http://localhost:3000**)
 2. Log in as **`ryanh@auburn.edu` / `RyanH`** (fullest demo: buddies, DMs, groups, admin)
