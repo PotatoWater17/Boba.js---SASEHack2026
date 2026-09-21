@@ -18,6 +18,7 @@ export default async function LoginPage({
   if (error === "bad") msg = "Wrong email or password.";
   if (error === "rate") msg = "Too many attempts. Wait a few minutes and try again.";
   if (error === "fill") msg = "Please fill out all fields.";
+  if (error === "server") msg = "Could not reach the demo database. Wait a moment and try again.";
   if (notice === "signup") {
     ok = true;
     msg = "Could not create an account with those details. Log In if you already have one, or try a different email.";

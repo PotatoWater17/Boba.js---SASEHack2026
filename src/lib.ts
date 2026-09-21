@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { readSession } from "@/auth";
 import { ensureVercelSqlite } from "@/vercel-sqlite";
 
-ensureVercelSqlite();
+const databaseUrl = ensureVercelSqlite();
 
 export {
   hashPassword,
@@ -37,7 +37,10 @@ const globalForPrisma = globalThis as unknown as {
 const PRISMA_CLIENT_VERSION = "2026-09-19-removed-member-v1";
 
 function createPrisma() {
-  return new PrismaClient({ log: ["error"] });
+  return new PrismaClient({
+    log: ["error"],
+    datasources: databaseUrl ? { db: { url: databaseUrl } } : undefined,
+  });
 }
 
 if (
@@ -50,11 +53,8 @@ if (
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrisma();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-  globalForPrisma.prismaVersion = PRISMA_CLIENT_VERSION;
-}
+globalForPrisma.prisma = prisma;
+globalForPrisma.prismaVersion = PRISMA_CLIENT_VERSION;
 
 export function isStrongPassword(password: string) {
   return (
@@ -69,13 +69,18 @@ export function isStrongPassword(password: string) {
 export { initials } from "@/utils";
 
 export async function getMe() {
-  const session = await readSession();
-  if (!session) return null;
-  const user = await prisma.user.findUnique({ where: { id: session.userId } });
-  if (!user) return null;
-  const dbVersion = typeof user.sessionVersion === "number" ? user.sessionVersion : 0;
-  if (dbVersion !== session.sessionVersion) return null;
-  return user;
+  try {
+    const session = await readSession();
+    if (!session) return null;
+    const user = await prisma.user.findUnique({ where: { id: session.userId } });
+    if (!user) return null;
+    const dbVersion = typeof user.sessionVersion === "number" ? user.sessionVersion : 0;
+    if (dbVersion !== session.sessionVersion) return null;
+    return user;
+  } catch (err) {
+    console.error("getMe failed", err);
+    return null;
+  }
 }
 
 export async function areFriends(a: string, b: string) {

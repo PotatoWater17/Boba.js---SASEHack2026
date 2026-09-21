@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandLockup } from "@/brand-lockup";
 import { AboutSections } from "./about-sections";
 import { getMe } from "@/lib";
+import teddyBear from "../../public/teddy-bear-face.jpg";
 
 export default async function IntroPage() {
   const me = await getMe();
@@ -25,7 +26,7 @@ export default async function IntroPage() {
         <div className="page about-hero-wrap">
           <div className="hero about-hero">
             <Image
-              src="/teddy-bear-face.jpg"
+              src={teddyBear}
               alt="StudyBuddyBoard teddy mascot"
               width={440}
               height={440}

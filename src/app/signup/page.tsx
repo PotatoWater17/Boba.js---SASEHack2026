@@ -20,6 +20,7 @@ export default async function SignupPage({
     msg = "Password needs 8+ characters with upper, lower, a number, and a special character.";
   }
   if (error === "fill") msg = "Please fill out all fields.";
+  if (error === "server") msg = "Could not create an account right now. Wait a moment and try again.";
 
   return (
     <AuthPage

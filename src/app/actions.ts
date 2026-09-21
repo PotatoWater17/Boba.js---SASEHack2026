@@ -46,22 +46,30 @@ export async function signup(formData: FormData) {
   if (password !== confirm) redirect("/signup?error=match");
   if (!isStrongPassword(password)) redirect("/signup?error=weak");
 
-  const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) redirect("/login?notice=signup");
+  try {
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) redirect("/login?notice=signup");
 
-  const accountNo = await nextAccountNo();
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashPassword(password),
-      firstName,
-      lastName,
-      university,
-      accountNo,
-    },
-  });
+    const accountNo = await nextAccountNo();
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashPassword(password),
+        firstName,
+        lastName,
+        university,
+        accountNo,
+      },
+    });
 
-  await setUser(user.id, user.sessionVersion);
+    await setUser(user.id, user.sessionVersion);
+  } catch (err) {
+    if (typeof err === "object" && err && "digest" in err && String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    console.error("signup failed", err);
+    redirect("/signup?error=server");
+  }
   redirect("/dashboard");
 }
 
@@ -79,20 +87,28 @@ export async function login(formData: FormData) {
     if (!emailLimit.ok) redirect("/login?error=rate");
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !verifyPassword(password, user.password)) {
-    redirect("/login?error=bad");
-  }
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !verifyPassword(password, user.password)) {
+      redirect("/login?error=bad");
+    }
 
-  if (needsPasswordUpgrade(user.password)) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashPassword(password) },
-    });
-  }
+    if (needsPasswordUpgrade(user.password)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashPassword(password) },
+      });
+    }
 
-  const fresh = await prisma.user.findUnique({ where: { id: user.id } });
-  await setUser(user.id, fresh?.sessionVersion ?? 0);
+    const fresh = await prisma.user.findUnique({ where: { id: user.id } });
+    await setUser(user.id, fresh?.sessionVersion ?? 0);
+  } catch (err) {
+    if (typeof err === "object" && err && "digest" in err && String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
+      throw err;
+    }
+    console.error("login failed", err);
+    redirect("/login?error=server");
+  }
   redirect("/dashboard");
 }
 
