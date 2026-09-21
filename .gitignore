@@ -40,6 +40,8 @@ yarn-error.log*
 # sqlite
 /prisma/dev.db
 /prisma/dev.db-journal
+/prisma/dev.db-shm
+/prisma/dev.db-wal
 /prisma/demo.db-journal
 
 # chat uploads
@@ -58,3 +60,6 @@ migrations/d1-batches
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local PotatoWater operator (pids / next logs)
+.potatowater/

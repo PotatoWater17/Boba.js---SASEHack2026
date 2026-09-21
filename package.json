@@ -25,7 +25,14 @@
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:seed": "wrangler d1 execute studybuddyboard --remote --file=migrations/0002_demo_data.sql",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "pw": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1",
+    "pw:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 status",
+    "pw:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 start",
+    "pw:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 stop",
+    "pw:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 restart",
+    "pw:stop:tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 stop -Tunnel",
+    "pw:restart:tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/potatowater.ps1 restart -Tunnel"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
