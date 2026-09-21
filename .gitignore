@@ -37,6 +37,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# throwaway Prisma schema used only for Neon seeding
+/prisma/schema.neon.tmp.prisma
+
 # sqlite
 /prisma/dev.db
 /prisma/dev.db-journal
