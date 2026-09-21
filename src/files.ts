@@ -1,9 +1,14 @@
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
 
-export const ATTACH_DIR = path.join(process.cwd(), "uploads", "dm");
-export const AVATAR_DIR = path.join(process.cwd(), "uploads", "avatars");
+const UPLOAD_ROOT = process.env.VERCEL_REGION
+  ? path.join("/tmp", "uploads")
+  : path.join(process.cwd(), "uploads");
+
+export const ATTACH_DIR = path.join(UPLOAD_ROOT, "dm");
+export const AVATAR_DIR = path.join(UPLOAD_ROOT, "avatars");
+export const BUNDLED_AVATAR_DIR = path.join(process.cwd(), "prisma", "seed-avatars");
 export const MAX_ATTACH = 8 * 1024 * 1024;
 export const MAX_AVATAR = 4 * 1024 * 1024;
 
@@ -59,6 +64,22 @@ export async function saveAttach(file: File) {
 
 function safeKey(key: string) {
   return Boolean(key) && !key.includes("..") && !key.includes("/") && !key.includes("\\");
+}
+
+export async function readAvatarBytes(key: string) {
+  if (!safeKey(key)) throw new Error("missing");
+  const candidates = [path.join(AVATAR_DIR, key), path.join(BUNDLED_AVATAR_DIR, key)];
+  if (key.startsWith("bundled-")) {
+    candidates.push(path.join(BUNDLED_AVATAR_DIR, key.slice("bundled-".length)));
+  }
+  for (const filePath of candidates) {
+    try {
+      return await readFile(filePath);
+    } catch {
+      /* try the next location */
+    }
+  }
+  throw new Error("missing");
 }
 
 export async function saveAvatar(file: File) {

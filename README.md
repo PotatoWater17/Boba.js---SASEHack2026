@@ -13,13 +13,15 @@ SASEHack 2026 · Auburn University — Ryan · Aiden · Bryan · Daniel
 
 ## For judges
 
-1. Follow **How to run it** below, then open **http://localhost:3000**
+**Live demo:** [https://boba-js-sase-hack2026.vercel.app](https://boba-js-sase-hack2026.vercel.app)
+
+1. Open the live URL (or follow **How to run it** below and use **http://localhost:3000**)
 2. Log in as **`ryanh@auburn.edu` / `RyanH`** (fullest demo: buddies, DMs, groups, admin)
 3. Try **Find Buddies** → **Browse** groups → open a group chat → **Buddy Board** dashboard
 
 Backup login: `jsmith@auburn.edu` / `Password1!`
 
-Run it locally — that’s the official demo for submission.
+The Vercel site is wired to this GitHub repo (`main` auto-deploys). Local SQLite is unchanged for offline judging.
 
 ---
 

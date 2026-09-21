@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
         },
       }
     : {}),
+  outputFileTracingIncludes: {
+    "/*": ["./prisma/demo.db", "./prisma/seed-avatars/**/*"],
+  },
   async headers() {
     return [
       {

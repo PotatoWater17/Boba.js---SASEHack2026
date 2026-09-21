@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { readSession } from "@/auth";
+import { ensureVercelSqlite } from "@/vercel-sqlite";
+
+ensureVercelSqlite();
 
 export {
   hashPassword,

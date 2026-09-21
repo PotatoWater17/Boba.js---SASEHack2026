@@ -1,7 +1,5 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
-import { attachExt, AVATAR_DIR, IMAGE_TYPES } from "@/files";
+import { attachExt, IMAGE_TYPES, readAvatarBytes } from "@/files";
 import { getMe, prisma } from "@/lib";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const buf = await readFile(path.join(AVATAR_DIR, key));
+    const buf = await readAvatarBytes(key);
     const mime = IMAGE_TYPES[attachExt(key)] || "image/jpeg";
     return new NextResponse(buf, {
       headers: {
