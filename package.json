@@ -22,9 +22,6 @@
     "db:demo-full": "npm run db:reset && npm run db:ryan-friends && npm run db:restore-accounts && npm run db:backfill-online",
     "logo:export": "node scripts/export-logo.mjs"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "next": "16.3.5",

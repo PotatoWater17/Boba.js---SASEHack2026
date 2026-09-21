@@ -4,13 +4,6 @@ StudyBuddyBoard matches students by course, campus, and study style. No messy Gr
 
 SASEHack 2026 · Auburn University — Ryan · Aiden · Bryan · Daniel
 
-## What it does
-
-- **Find Buddies** — match students by class, exam topics, major, campus, and study style
-- **Browse / create study groups** — public groups with filters (subject, format, size, style)
-- **Buddy DMs + group chat** — attachments, reactions, meetup invites
-- **Buddy Board dashboard** — upcoming groups, calendar, unread messages
-
 ## For judges
 
 **Live demo:** [https://studybuddyboard.vercel.app](https://studybuddyboard.vercel.app)
@@ -21,7 +14,42 @@ SASEHack 2026 · Auburn University — Ryan · Aiden · Bryan · Daniel
 
 Backup login: `jsmith@auburn.edu` / `Password1!`
 
-The Vercel site is wired to this GitHub repo (`main` auto-deploys). Local SQLite is unchanged for offline judging.
+The Vercel site auto-deploys from GitHub `main`. Local SQLite still works if you want to run it offline.
+
+---
+
+## Inspiration
+
+It’s hard to find classmates for an upcoming exam. You end up in a huge GroupMe or a random Discord server, and you still don’t know who’s in your class, on your campus, or studying the same way you are. We wanted one place to match with people grinding the same test, then actually show up and stay coordinated.
+
+## What it does
+
+StudyBuddyBoard matches students by course, campus, and study style. You can find exam-prep buddies, browse or host study groups (in-person or online), DM and group-chat with attachments and reactions, and keep upcoming sessions on a Buddy Board dashboard.
+
+- **Find Buddies** — match by class, exam topics, major, campus, and study style
+- **Browse / create study groups** — public groups with filters (subject, format, size, style)
+- **Buddy DMs + group chat** — attachments, reactions, meetup invites
+- **Buddy Board dashboard** — upcoming groups, calendar, unread messages
+
+## How we built it
+
+We built a full-stack web app in Next.js (App Router, React Server Components, Server Actions) with React and Tailwind. Profiles, groups, chat, and matching live in SQLite via Prisma. Auth uses signed HTTP-only session cookies and hashed passwords. File uploads (profile photos, chat attachments) stay on disk locally. Demo accounts, tailored bios, and PFPs are backed up in git so a fresh clone looks like the live app. Production is on Vercel at [studybuddyboard.vercel.app](https://studybuddyboard.vercel.app).
+
+## Challenges we ran into
+
+Keeping demo data honest was harder than it sounds — people edited real profiles and photos, and a reset would wipe them unless we snapshot users and commit avatars. Matching had to feel useful (same class, topics, campus, give/get help) without turning into a noisy social feed. Chat, buddy requests, blocks, join requests, and online vs in-person groups all had to stay consistent across pages. Windows vs Mac/Linux setup also bit us (Prisma file locks, copying `.env`), so we tightened the README for everybody. Making the desktop UI work on a phone was its own fight: nav pills got clipped, the sticky header needed to stay opaque, and section heads had to stack instead of overflowing.
+
+## Accomplishments that we're proud of
+
+We shipped a complete loop in one weekend: signup, match, join a group, talk, and show up on a calendar. Matching is course-first, not “people you might know.” Groups and chat are native — you don’t bounce to GroupMe. Safety is built in (block, leave, join requests). The demo is actually demoable: 67 accounts, photos, friendships, and chats restore with one command, and the same world is live on Vercel.
+
+## What we learned
+
+Scope the product around one job (exam prep with the right people) and cut everything that looks like a social network. Server Actions plus a simple SQLite schema moved faster than a split frontend/backend. Demo data is part of the product — if clones don’t look like the live app, users won’t see the work. Small UX details (filters, unread badges, photo crop, online/in-person, mobile nav) matter more than extra pages.
+
+## What's next for StudyBuddyBoard
+
+Branch out to countries outside of the U.S. After that: more campuses, calendar sync, and better exam-date reminders. The hosted deploy is already live so students can try it without cloning the repo.
 
 ---
 
