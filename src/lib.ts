@@ -203,7 +203,7 @@ export async function usersBlockedByMe(meId: string) {
   return rows.map((row) => row.blocked);
 }
 
-async function acceptedFriendIds(userId: string) {
+export async function acceptedFriendIds(userId: string) {
   const rows = await prisma.friendship.findMany({
     where: {
       status: "accepted",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { sendMessage } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { ChatCompose } from "@/chat-compose";
@@ -49,10 +49,10 @@ export function GroupChatPanel({
   );
 
   useEffect(() => {
-    setLive(messages);
+    setLive((cur) => mergeChatLines(messages, cur, [], (m) => m.userId));
   }, [messages]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const stored = loadChatPersist<GroupLine>(persistKey);
     setExtra(stored.extra);
     setUnsentIds(stored.unsentIds);
@@ -70,7 +70,8 @@ export function GroupChatPanel({
       const res = await fetch(`/api/chat/group?meetingId=${encodeURIComponent(meetingId)}`, { cache: "no-store" });
       if (!res.ok || ignore) return;
       const data = (await res.json()) as { messages?: GroupLine[] };
-      if (Array.isArray(data.messages)) setLive(data.messages);
+      if (!Array.isArray(data.messages)) return;
+      setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.userId));
     }
     void pull();
     return () => {
@@ -141,7 +142,9 @@ export function GroupChatPanel({
         void fetch(`/api/chat/group?meetingId=${encodeURIComponent(meetingId)}`, { cache: "no-store" })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: { messages?: GroupLine[] } | null) => {
-            if (Array.isArray(data?.messages)) setLive(data.messages);
+            if (Array.isArray(data?.messages)) {
+              setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.userId));
+            }
           })
           .catch(() => {});
       }

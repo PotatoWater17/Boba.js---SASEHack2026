@@ -1,15 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { markDmSeen } from "@/app/actions";
 
 export function SeenOnOpen({ userId }: { userId: string }) {
-  const marked = useRef(false);
-
   useEffect(() => {
-    if (marked.current) return;
-    marked.current = true;
-    void markDmSeen(userId);
+    let on = true;
+
+    async function tick() {
+      if (!on) return;
+      await markDmSeen(userId);
+    }
+
+    void tick();
+    const id = window.setInterval(() => void tick(), 2500);
+    return () => {
+      on = false;
+      window.clearInterval(id);
+    };
   }, [userId]);
 
   return null;

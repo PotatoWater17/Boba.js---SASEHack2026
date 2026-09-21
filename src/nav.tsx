@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ackFriendDm, ackGroupThread, visibleFriendNotices, visibleGroupNotices } from "@/inbox-ack";
 
 const LINKS = [
   { href: "/", label: "About StudyBuddyBoard", shortLabel: "About" },
@@ -11,6 +12,21 @@ const LINKS = [
   { href: "/friends", label: "My Buddies", shortLabel: "Buddies" },
   { href: "/groups", label: "My Study Buddy Groups", shortLabel: "Groups" },
 ];
+
+function openFriendId(pathname: string) {
+  const match = pathname.match(/^\/friends\/([^/?#]+)/);
+  return match?.[1];
+}
+
+function openMeetingId(pathname: string) {
+  const match = pathname.match(/^\/meetings\/([^/?#]+)/);
+  return match?.[1];
+}
+
+type InboxPoll = {
+  dms: { fromId: string; msgId: string; unread: number }[];
+  groups: { meetingId: string; msgId: string; unread: number }[];
+};
 
 export function NavLinks({
   friendNotices = 0,
@@ -22,10 +38,17 @@ export function NavLinks({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  const polled = useRef(false);
   const [friends, setFriends] = useState(friendNotices);
   const [groups, setGroups] = useState(groupNotices);
 
   useEffect(() => {
+    pathRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (polled.current) return;
     setFriends(friendNotices);
     setGroups(groupNotices);
   }, [friendNotices, groupNotices]);
@@ -37,9 +60,22 @@ export function NavLinks({
       try {
         const res = await fetch("/api/inbox", { credentials: "same-origin" });
         if (!res.ok || !on) return;
-        const data = (await res.json()) as { friendNotices: number; groupNotices: number };
-        setFriends(data.friendNotices);
-        setGroups(data.groupNotices);
+        const data = (await res.json()) as InboxPoll;
+        const dms = Array.isArray(data.dms) ? data.dms : [];
+        const groups = Array.isArray(data.groups) ? data.groups : [];
+        const friendId = openFriendId(pathRef.current);
+        const meetingId = openMeetingId(pathRef.current);
+        if (friendId) {
+          const dm = dms.find((row) => row.fromId === friendId);
+          if (dm) ackFriendDm(friendId, dm.msgId);
+        }
+        if (meetingId) {
+          const group = groups.find((row) => row.meetingId === meetingId);
+          if (group) ackGroupThread(meetingId, group.msgId);
+        }
+        polled.current = true;
+        setFriends(visibleFriendNotices(dms, friendId));
+        setGroups(visibleGroupNotices(groups, meetingId));
       } catch {}
     }
 

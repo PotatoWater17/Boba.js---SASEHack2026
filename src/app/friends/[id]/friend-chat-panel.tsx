@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { sendDm } from "@/app/actions";
 import { ChatCompose } from "@/chat-compose";
 import { ChatDropZone } from "@/chat-drop";
@@ -45,10 +45,10 @@ export function FriendChatPanel({
   );
 
   useEffect(() => {
-    setLive(messages);
+    setLive((cur) => mergeChatLines(messages, cur, [], (m) => m.fromId));
   }, [messages]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const stored = loadChatPersist<DmLine>(persistKey);
     setExtra(stored.extra);
     setUnsentIds(stored.unsentIds);
@@ -66,7 +66,8 @@ export function FriendChatPanel({
       const res = await fetch(`/api/chat/dm?userId=${encodeURIComponent(friendId)}`, { cache: "no-store" });
       if (!res.ok || ignore) return;
       const data = (await res.json()) as { messages?: DmLine[] };
-      if (Array.isArray(data.messages)) setLive(data.messages);
+      if (!Array.isArray(data.messages)) return;
+      setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.fromId));
     }
     void pull();
     return () => {
@@ -137,7 +138,9 @@ export function FriendChatPanel({
         void fetch(`/api/chat/dm?userId=${encodeURIComponent(friendId)}`, { cache: "no-store" })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: { messages?: DmLine[] } | null) => {
-            if (Array.isArray(data?.messages)) setLive(data.messages);
+            if (Array.isArray(data?.messages)) {
+              setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.fromId));
+            }
           })
           .catch(() => {});
       }

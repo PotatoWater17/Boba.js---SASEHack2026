@@ -43,7 +43,7 @@ export default async function GroupsPage({
   const meetingIds = memberships.map((mem) => mem.meetingId);
   const unreadMsgs = meetingIds.length
     ? await prisma.message.findMany({
-        where: { meetingId: { in: meetingIds }, userId: { not: me.id } },
+        where: { meetingId: { in: meetingIds }, userId: { not: me.id }, unsent: false },
         select: { meetingId: true, createdAt: true },
       })
     : [];

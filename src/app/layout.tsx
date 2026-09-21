@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { logout } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { isUserAdmin } from "@/admin";
-import { getMe, prisma } from "@/lib";
+import { loadInbox } from "@/inbox";
+import { getMe } from "@/lib";
 import { BrandLockup } from "@/brand-lockup";
 import { NavLinks } from "@/nav";
 import { NavHeightSync } from "@/nav-height";
@@ -28,32 +29,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const themeCookie = (await cookies()).get("theme")?.value;
   const me = await getMe();
   const isAdmin = me ? isUserAdmin(me) : false;
-  const friendNotices = me
-    ? (await prisma.directMessage.count({ where: { toId: me.id, seen: false } })) +
-      (await prisma.reactionNotice.count({ where: { userId: me.id, seen: false, dmId: { not: "" } } }))
-    : 0;
-
-  let groupNotices = 0;
-  if (me) {
-    groupNotices = await prisma.reactionNotice.count({
-      where: { userId: me.id, seen: false, meetingId: { not: "" } },
-    });
-    const memberships = await prisma.member.findMany({
-      where: { userId: me.id },
-      select: { meetingId: true, lastReadAt: true },
-    });
-    if (memberships.length) {
-      const msgs = await prisma.message.findMany({
-        where: {
-          meetingId: { in: memberships.map((m) => m.meetingId) },
-          userId: { not: me.id },
-        },
-        select: { meetingId: true, createdAt: true },
-      });
-      const lastRead = new Map(memberships.map((m) => [m.meetingId, m.lastReadAt.getTime()]));
-      groupNotices += msgs.filter((msg) => msg.createdAt.getTime() > (lastRead.get(msg.meetingId) || 0)).length;
-    }
-  }
+  const inbox = me ? await loadInbox(me.id) : null;
+  const friendNotices = inbox?.friendNotices ?? 0;
+  const groupNotices = inbox?.groupNotices ?? 0;
 
   return (
     <html lang="en" suppressHydrationWarning data-theme={themeCookie === "dark" ? "dark" : undefined}>

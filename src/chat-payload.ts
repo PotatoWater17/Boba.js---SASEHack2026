@@ -56,26 +56,59 @@ export type GroupLine = {
   previewUrl?: string;
 };
 
-export function mergeChatLines<T extends { id: string; unsent: boolean; text?: string; createdAt?: string; fileName?: string }>(
+function lineTime(iso?: string) {
+  const n = Date.parse(iso || "");
+  return Number.isFinite(n) ? n : 0;
+}
+
+function linePrint<T extends { text?: string; fileName?: string }>(row: T, who: (row: T) => string) {
+  return `${who(row)}\n${row.text || ""}\n${row.fileName || ""}`;
+}
+
+function pickChatLine<T extends { id: string; unsent: boolean; pending?: boolean }>(a: T, b: T): T {
+  const aTmp = a.id.startsWith("tmp-");
+  const bTmp = b.id.startsWith("tmp-");
+  const primary = aTmp && !bTmp ? b : bTmp && !aTmp ? a : a.pending && !b.pending ? b : b.pending && !a.pending ? a : b;
+  const other = primary === a ? b : a;
+  return {
+    ...other,
+    ...primary,
+    id: aTmp && !bTmp ? b.id : bTmp && !aTmp ? a.id : primary.id,
+    unsent: Boolean(a.unsent || b.unsent),
+    pending: Boolean(a.pending && b.pending),
+  };
+}
+
+export function mergeChatLines<T extends { id: string; unsent: boolean; text?: string; createdAt?: string; fileName?: string; pending?: boolean }>(
   server: T[],
   extra: T[],
   unsentIds: string[],
   who: (row: T) => string = () => "",
 ) {
-  const ids = new Set(server.map((m) => m.id));
   const unsent = new Set(unsentIds);
-  const shown = server.map((m) => (unsent.has(m.id) ? { ...m, unsent: true } : m));
-  return [
-    ...shown,
-    ...extra.filter((m) => {
-      if (ids.has(m.id)) return false;
-      const fingerprint = `${who(m)}|${m.text || ""}|${m.fileName || ""}`;
-      const extraAt = Date.parse(m.createdAt || "") || 0;
-      return !server.some((s) => {
-        if (`${who(s)}|${s.text || ""}|${s.fileName || ""}` !== fingerprint) return false;
-        const serverAt = Date.parse(s.createdAt || "") || 0;
-        return Math.abs(serverAt - extraAt) < 120000;
-      });
-    }),
-  ];
+  const byId = new Map<string, T>();
+  for (const raw of [...server, ...extra]) {
+    const row = unsent.has(raw.id) ? { ...raw, unsent: true } : raw;
+    const prev = byId.get(row.id);
+    byId.set(row.id, prev ? pickChatLine(prev, row) : row);
+  }
+
+  const ordered = [...byId.values()].sort((a, b) => {
+    const dt = lineTime(a.createdAt) - lineTime(b.createdAt);
+    if (dt !== 0) return dt;
+    return a.id.localeCompare(b.id);
+  });
+
+  const collapsed: T[] = [];
+  for (const row of ordered) {
+    const print = linePrint(row, who);
+    const dupAt = collapsed.findIndex((seen) => {
+      if (linePrint(seen, who) !== print) return false;
+      const tmp = seen.id.startsWith("tmp-") || row.id.startsWith("tmp-");
+      return tmp && Math.abs(lineTime(seen.createdAt) - lineTime(row.createdAt)) < 120000;
+    });
+    if (dupAt < 0) collapsed.push(row);
+    else collapsed[dupAt] = pickChatLine(collapsed[dupAt], row);
+  }
+  return collapsed;
 }

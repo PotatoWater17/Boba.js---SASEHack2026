@@ -65,7 +65,9 @@ export default async function FriendsPage({
           (m.fromId === me.id && m.toId === friend.id) ||
           (m.fromId === friend.id && m.toId === me.id),
       );
-      const unread = dms.filter((m) => m.fromId === friend.id && m.toId === me.id && !m.seen).length;
+      const unread = dms.filter(
+        (m) => m.fromId === friend.id && m.toId === me.id && !m.seen && !m.unsent,
+      ).length;
       return { friend, last, unread };
     })
     .filter(({ friend, last, unread }) => {

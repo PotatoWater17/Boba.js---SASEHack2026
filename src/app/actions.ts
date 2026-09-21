@@ -1016,7 +1016,7 @@ export async function markDmSeen(userId: string) {
     data: { seen: true },
   });
   await prisma.reactionNotice.updateMany({
-    where: { userId: me.id, actorId: userId, seen: false, dmId: { not: "" } },
+    where: { userId: me.id, actorId: userId, seen: false, meetingId: "" },
     data: { seen: true },
   });
 }
