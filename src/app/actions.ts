@@ -10,6 +10,7 @@ import { removeAttach, saveAttach, saveAvatar, removeAvatar } from "@/files";
 import { resolveUniversity } from "@/universities";
 import { resolveMajor } from "@/majors";
 import { purgeMeeting, removeMeetingIfEmpty } from "@/meeting-cleanup";
+import { createGroupActivityNotices, groupActivityTable, personLabel } from "@/group-activity";
 import { addMeetingMemberIfRoom } from "@/meeting-members";
 import { clientIp, rateLimit } from "@/rate-limit";
 import {
@@ -22,11 +23,11 @@ import {
   blockedByMe,
   blockedUserIds,
   clearUser,
-  ensureAcceptedFriendship,
   flushSqliteWrites,
   formatTimeInput,
   getMe,
   hashPassword,
+  areFriends,
   isBlockedBetween,
   isStrongPassword,
   isValidMeetDate,
@@ -38,13 +39,32 @@ import {
   splitList,
   verifyPassword,
   withDbRetry,
+  ymd,
 } from "@/lib";
 
 function refreshFriendChat(userId: string) {
   revalidatePath(`/friends/${userId}`);
+  revalidatePath(`/profile/${userId}`);
   revalidatePath("/friends");
   revalidatePath("/dashboard");
   revalidatePath("/", "layout");
+}
+
+function actionNext(formData: FormData, fallback: string) {
+  const raw = String(formData.get("next") || "");
+  if (raw === "stay") return null;
+  return safeNextPath(raw, fallback);
+}
+
+async function finishFriendChange(userId: string, next: string | null) {
+  await flushSqliteWrites();
+  if (userId) refreshFriendChat(userId);
+  else {
+    revalidatePath("/friends");
+    revalidatePath("/dashboard");
+    revalidatePath("/", "layout");
+  }
+  if (next) redirect(next);
 }
 
 function refreshGroupChat(meetingId: string) {
@@ -440,6 +460,8 @@ export async function updateMeeting(
     return { error: `Max buddies can't be under ${memberCount} (buddies already in the group).` };
   }
 
+  const goingPrivate = formData.get("isPrivate") === "1";
+
   try {
     await withDbRetry(() =>
       prisma.meeting.update({
@@ -456,12 +478,21 @@ export async function updateMeeting(
           maxSize,
           groupKind: kind.id,
           style,
-          isPrivate: formData.get("isPrivate") === "1",
-          requireApproval:
-            formData.get("isPrivate") === "1" ? false : formData.get("requireApproval") === "1",
+          isPrivate: goingPrivate,
+          requireApproval: goingPrivate ? false : formData.get("requireApproval") === "1",
         },
       }),
     );
+    if (goingPrivate) {
+      await prisma.meetingJoinRequest.updateMany({
+        where: { meetingId, status: "pending" },
+        data: { status: "declined" },
+      });
+      await prisma.meetupInvite.updateMany({
+        where: { meetingId, status: "pending", fromId: { not: me.id } },
+        data: { status: "declined" },
+      });
+    }
     redirect(`/meetings/${meetingId}`);
   } catch (err) {
     if (isNextRedirect(err)) throw err;
@@ -483,6 +514,8 @@ export async function joinMeeting(formData: FormData) {
   if (!meeting) redirect("/find");
   if (meeting.members.some((m) => m.userId === me.id)) redirect(next);
   if (meeting.isPrivate) redirect(`${next}?error=private`);
+  if (await isBlockedBetween(me.id, meeting.hostId)) redirect(`${next}?error=blocked`);
+  if (meeting.meetDate && meeting.meetDate < ymd(new Date())) redirect(`${next}?error=ended`);
 
   if (meeting.requireApproval) {
     if (meeting.members.length >= meeting.maxSize) redirect(`${next}?error=full`);
@@ -510,12 +543,21 @@ export async function approveJoinRequest(formData: FormData) {
 
   const requestId = String(formData.get("requestId") || "");
   const meetingId = String(formData.get("meetingId") || "");
+  const next = actionNext(formData, `/meetings/${meetingId}`);
   const req = await prisma.meetingJoinRequest.findUnique({
     where: { id: requestId },
     include: { meeting: { include: { members: true } } },
   });
   if (!req || req.meetingId !== meetingId || req.status !== "pending") redirect(`/meetings/${meetingId}`);
   if (req.meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+  if (req.meeting.isPrivate) {
+    await prisma.meetingJoinRequest.update({ where: { id: requestId }, data: { status: "declined" } });
+    redirect(`/meetings/${meetingId}?error=private`);
+  }
+  if (await isBlockedBetween(req.userId, req.meeting.hostId)) {
+    await prisma.meetingJoinRequest.update({ where: { id: requestId }, data: { status: "declined" } });
+    redirect(`/meetings/${meetingId}?error=blocked`);
+  }
 
   const result = await addMeetingMemberIfRoom(meetingId, req.userId);
   if (result === "full") {
@@ -525,7 +567,9 @@ export async function approveJoinRequest(formData: FormData) {
   if (result === "joined" || result === "member") {
     await prisma.meetingJoinRequest.delete({ where: { id: requestId } });
   }
-  redirect(`/meetings/${meetingId}`);
+  await flushSqliteWrites();
+  refreshGroupChat(meetingId);
+  if (next) redirect(next);
 }
 
 export async function declineJoinRequest(formData: FormData) {
@@ -534,6 +578,7 @@ export async function declineJoinRequest(formData: FormData) {
 
   const requestId = String(formData.get("requestId") || "");
   const meetingId = String(formData.get("meetingId") || "");
+  const next = actionNext(formData, `/meetings/${meetingId}`);
   const req = await prisma.meetingJoinRequest.findUnique({
     where: { id: requestId },
     include: { meeting: true },
@@ -542,6 +587,20 @@ export async function declineJoinRequest(formData: FormData) {
   if (req.meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
 
   await prisma.meetingJoinRequest.update({ where: { id: requestId }, data: { status: "declined" } });
+  await flushSqliteWrites();
+  refreshGroupChat(meetingId);
+  if (next) redirect(next);
+}
+
+export async function cancelJoinRequest(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const meetingId = String(formData.get("meetingId") || "");
+  if (!meetingId) redirect("/find");
+  await prisma.meetingJoinRequest.deleteMany({
+    where: { meetingId, userId: me.id, status: "pending" },
+  });
   redirect(`/meetings/${meetingId}`);
 }
 
@@ -560,8 +619,24 @@ export async function leaveMeeting(formData: FormData) {
   const isOnlyMember = meeting.members.length === 1 && meeting.members[0]?.userId === me.id;
   if (isOwner && !isOnlyMember) redirect(`/meetings/${meetingId}?error=owner`);
 
+  const remaining = meeting.members.filter((m) => m.userId !== me.id);
+  if (remaining.length) {
+    await createGroupActivityNotices(
+      remaining.map((m) => ({
+        userId: m.userId,
+        kind: "leave",
+        meetingId,
+        subject: meeting.subject,
+        actorId: me.id,
+        actorName: personLabel(me.firstName, me.lastName),
+        actorPhoto: me.photoKey,
+      })),
+    );
+  }
+
   await prisma.member.deleteMany({ where: { meetingId, userId: me.id } });
   await prisma.meetingJoinRequest.deleteMany({ where: { meetingId, userId: me.id } });
+  await prisma.meetupInvite.deleteMany({ where: { meetingId, toId: me.id } });
 
   const deleted = await removeMeetingIfEmpty(meetingId);
   redirect(deleted ? "/groups?notice=deleted" : "/groups");
@@ -574,10 +649,25 @@ export async function deleteMeeting(formData: FormData) {
   const meetingId = String(formData.get("meetingId") || "");
   const meeting = await prisma.meeting.findUnique({
     where: { id: meetingId },
-    select: { hostId: true },
+    select: { hostId: true, subject: true, members: { select: { userId: true } } },
   });
   if (!meeting) redirect("/groups");
   if (meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
+
+  const others = meeting.members.filter((m) => m.userId !== me.id);
+  if (others.length) {
+    await createGroupActivityNotices(
+      others.map((m) => ({
+        userId: m.userId,
+        kind: "disbanded",
+        meetingId,
+        subject: meeting.subject,
+        actorId: me.id,
+        actorName: personLabel(me.firstName, me.lastName),
+        actorPhoto: me.photoKey,
+      })),
+    );
+  }
 
   await purgeMeeting(meetingId);
   redirect("/groups?notice=deleted");
@@ -599,6 +689,18 @@ export async function removeMeetingMember(formData: FormData) {
   if (meeting.hostId !== me.id) redirect(`/meetings/${meetingId}`);
   if (userId === me.id) redirect(`/meetings/${meetingId}`);
   if (!meeting.members.some((m) => m.userId === userId)) redirect(`/meetings/${meetingId}`);
+
+  await createGroupActivityNotices([
+    {
+      userId,
+      kind: "kicked",
+      meetingId,
+      subject: meeting.subject,
+      actorId: me.id,
+      actorName: personLabel(me.firstName, me.lastName),
+      actorPhoto: me.photoKey,
+    },
+  ]);
 
   await prisma.$transaction([
     prisma.member.deleteMany({ where: { meetingId, userId } }),
@@ -705,6 +807,19 @@ export async function markGroupSeen(meetingId: string) {
   });
 }
 
+export async function dismissGroupActivity(formData: FormData) {
+  const me = await getMe();
+  if (!me) return;
+  const noticeId = String(formData.get("noticeId") || "");
+  if (!noticeId) return;
+  const table = groupActivityTable();
+  if (!table) return;
+  await table.updateMany({
+    where: { id: noticeId, userId: me.id, seen: false },
+    data: { seen: true },
+  });
+}
+
 export async function inviteToMeetup(formData: FormData) {
   const me = await getMe();
   if (!me) redirect("/login");
@@ -732,10 +847,10 @@ export async function inviteToMeetup(formData: FormData) {
   const existing = await prisma.meetupInvite.findUnique({
     where: { meetingId_toId: { meetingId, toId: userId } },
   });
-  if (existing?.status === "pending" || existing?.status === "accepted") redirect(next);
+  if (existing?.status === "pending") redirect(next);
 
   const invite =
-    existing && existing.status === "declined"
+    existing && (existing.status === "declined" || existing.status === "accepted")
       ? await prisma.meetupInvite.update({
           where: { id: existing.id },
           data: { status: "pending", fromId: me.id },
@@ -764,6 +879,7 @@ export async function acceptMeetupInvite(formData: FormData) {
   if (!me) redirect("/login");
 
   const inviteId = String(formData.get("inviteId") || "");
+  const stay = String(formData.get("next") || "") === "stay";
   const invite = await prisma.meetupInvite.findUnique({
     where: { id: inviteId },
     include: { meeting: { include: { members: true } } },
@@ -771,8 +887,17 @@ export async function acceptMeetupInvite(formData: FormData) {
   if (!invite || invite.toId !== me.id) redirect("/friends");
   if (invite.status !== "pending") redirect(`/friends/${invite.fromId}`);
   if (await isBlockedBetween(me.id, invite.fromId)) redirect(`/friends/${invite.fromId}?error=blocked`);
+  if (!(await areFriends(me.id, invite.fromId))) redirect(`/friends/${invite.fromId}?error=buddy`);
 
   const meeting = invite.meeting;
+  if (!meeting.members.some((m) => m.userId === invite.fromId)) {
+    await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "declined" } });
+    redirect(`/friends/${invite.fromId}?error=buddy`);
+  }
+  if (meeting.isPrivate && invite.fromId !== meeting.hostId) {
+    await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "declined" } });
+    redirect(`/friends/${invite.fromId}?error=private`);
+  }
   const joinResult = await addMeetingMemberIfRoom(meeting.id, me.id);
   if (joinResult === "full") {
     await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "declined" } });
@@ -791,6 +916,10 @@ export async function acceptMeetupInvite(formData: FormData) {
     },
   });
 
+  await flushSqliteWrites();
+  refreshGroupChat(meeting.id);
+  refreshFriendChat(invite.fromId);
+  if (stay) return;
   redirect(`/meetings/${meeting.id}`);
 }
 
@@ -799,19 +928,25 @@ export async function declineMeetupInvite(formData: FormData) {
   if (!me) redirect("/login");
 
   const inviteId = String(formData.get("inviteId") || "");
+  const stay = String(formData.get("next") || "") === "stay";
   const invite = await prisma.meetupInvite.findUnique({ where: { id: inviteId } });
   if (!invite || invite.toId !== me.id) redirect("/friends");
   if (invite.status === "pending") {
     await prisma.meetupInvite.update({ where: { id: invite.id }, data: { status: "declined" } });
-    await prisma.directMessage.create({
-      data: {
-        fromId: me.id,
-        toId: invite.fromId,
-        text: "Declined the study buddy group invite.",
-        seen: false,
-      },
-    });
+    if (!(await isBlockedBetween(me.id, invite.fromId))) {
+      await prisma.directMessage.create({
+        data: {
+          fromId: me.id,
+          toId: invite.fromId,
+          text: "Declined the study buddy group invite.",
+          seen: false,
+        },
+      });
+    }
   }
+  await flushSqliteWrites();
+  refreshFriendChat(invite.fromId);
+  if (stay) return;
   redirect(`/friends/${invite.fromId}`);
 }
 
@@ -843,10 +978,18 @@ export async function addFriend(formData: FormData) {
   if (existing?.fromId === me.id) redirect(next);
   if (existing && existing.fromId === userId && existing.status === "pending") {
     await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
+    await flushSqliteWrites();
+    refreshFriendChat(userId);
     redirect(next);
   }
 
-  await prisma.friendship.create({ data: { fromId: me.id, toId: userId, status: "pending" } });
+  try {
+    await prisma.friendship.create({ data: { fromId: me.id, toId: userId, status: "pending" } });
+  } catch (err) {
+    if (isNextRedirect(err)) throw err;
+  }
+  await flushSqliteWrites();
+  refreshFriendChat(userId);
   redirect(next);
 }
 
@@ -855,13 +998,45 @@ export async function acceptFriend(formData: FormData) {
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  const next = safeNextPath(String(formData.get("next") || ""), userId ? `/profile/${userId}` : "/dashboard");
-  if (await isBlockedBetween(me.id, userId)) redirect(`${next}${next.includes("?") ? "&" : "?"}error=blocked`);
+  const next = actionNext(formData, userId ? `/profile/${userId}` : "/dashboard");
+  if (!userId || userId === me.id) return finishFriendChange(userId, next);
+  if (await isBlockedBetween(me.id, userId)) {
+    if (next) redirect(`${next}${next.includes("?") ? "&" : "?"}error=blocked`);
+    return;
+  }
   const existing = await friendshipBetween(me.id, userId);
   if (existing && existing.toId === me.id && existing.status === "pending") {
     await prisma.friendship.update({ where: { id: existing.id }, data: { status: "accepted" } });
   }
-  redirect(next);
+  return finishFriendChange(userId, next);
+}
+
+export async function declineFriend(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = actionNext(formData, userId ? `/profile/${userId}` : "/dashboard");
+  if (!userId || userId === me.id) return finishFriendChange(userId, next);
+
+  await prisma.friendship.deleteMany({
+    where: { status: "pending", fromId: userId, toId: me.id },
+  });
+  return finishFriendChange(userId, next);
+}
+
+export async function cancelFriendRequest(formData: FormData) {
+  const me = await getMe();
+  if (!me) redirect("/login");
+
+  const userId = String(formData.get("userId") || "");
+  const next = actionNext(formData, userId ? `/profile/${userId}` : "/dashboard");
+  if (!userId || userId === me.id) return finishFriendChange(userId, next);
+
+  await prisma.friendship.deleteMany({
+    where: { status: "pending", fromId: me.id, toId: userId },
+  });
+  return finishFriendChange(userId, next);
 }
 
 export async function sendDm(formData: FormData) {
@@ -1009,6 +1184,7 @@ export async function unsendMessage(formData: FormData) {
 export async function markDmSeen(userId: string) {
   const me = await getMe();
   if (!me || !userId || userId === me.id) return;
+  if (await isBlockedBetween(me.id, userId)) return;
   const bond = await friendshipBetween(me.id, userId);
   if (!bond || bond.status !== "accepted") return;
   await prisma.directMessage.updateMany({
@@ -1026,16 +1202,28 @@ export async function removeFriend(formData: FormData) {
   if (!me) redirect("/login");
 
   const userId = String(formData.get("userId") || "");
-  const next = safeNextPath(String(formData.get("next") || ""), `/profile/${userId}`);
+  const next = actionNext(formData, userId ? `/profile/${userId}` : "/dashboard");
+  if (!userId || userId === me.id) return finishFriendChange(userId, next);
+
   await prisma.friendship.deleteMany({
     where: {
+      status: "accepted",
       OR: [
         { fromId: me.id, toId: userId },
         { fromId: userId, toId: me.id },
       ],
     },
   });
-  redirect(next);
+  await prisma.meetupInvite.deleteMany({
+    where: {
+      status: "pending",
+      OR: [
+        { fromId: me.id, toId: userId },
+        { fromId: userId, toId: me.id },
+      ],
+    },
+  });
+  return finishFriendChange(userId, next);
 }
 
 export async function blockUser(formData: FormData) {
@@ -1048,7 +1236,6 @@ export async function blockUser(formData: FormData) {
 
   await prisma.friendship.deleteMany({
     where: {
-      status: "pending",
       OR: [
         { fromId: me.id, toId: userId },
         { fromId: userId, toId: me.id },
@@ -1085,7 +1272,6 @@ export async function unblockUser(formData: FormData) {
   await prisma.block.delete({
     where: { blockerId_blockedId: { blockerId: me.id, blockedId: userId } },
   });
-  await ensureAcceptedFriendship(me.id, userId);
   redirect(next);
 }
 

@@ -70,12 +70,15 @@ export function GroupChatPanel({
       const res = await fetch(`/api/chat/group?meetingId=${encodeURIComponent(meetingId)}`, { cache: "no-store" });
       if (!res.ok || ignore) return;
       const data = (await res.json()) as { messages?: GroupLine[] };
-      if (!Array.isArray(data.messages)) return;
-      setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.userId));
+      const incoming = data.messages;
+      if (!Array.isArray(incoming)) return;
+      setLive((cur) => mergeChatLines(incoming, cur, [], (m) => m.userId));
     }
     void pull();
+    const id = window.setInterval(() => void pull(), 2500);
     return () => {
       ignore = true;
+      window.clearInterval(id);
     };
   }, [meetingId]);
 
@@ -111,7 +114,7 @@ export function GroupChatPanel({
       pending: true,
       previewUrl,
     };
-    setExtra((cur) => [...cur.filter((m) => !m.pending), pending]);
+    setExtra((cur) => [...cur, pending]);
     saveChatPersist(persistKey, [pending], unsentIds);
 
     try {
@@ -142,8 +145,9 @@ export function GroupChatPanel({
         void fetch(`/api/chat/group?meetingId=${encodeURIComponent(meetingId)}`, { cache: "no-store" })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: { messages?: GroupLine[] } | null) => {
-            if (Array.isArray(data?.messages)) {
-              setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.userId));
+            const incoming = data?.messages;
+            if (Array.isArray(incoming)) {
+              setLive((cur) => mergeChatLines(incoming, cur, [], (m) => m.userId));
             }
           })
           .catch(() => {});

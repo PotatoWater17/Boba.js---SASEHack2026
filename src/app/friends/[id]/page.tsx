@@ -68,8 +68,9 @@ export default async function FriendChatPage({
       {error === "buddy" ? (
         <p className="err">You&apos;re no longer buddies — reconnect from their profile.</p>
       ) : null}
+      {error === "private" ? <p className="err">That private group is invite-only from the owner.</p> : null}
 
-      <FriendChatPanel friendId={friend.id} meId={me.id} meName={me.firstName} messages={lines} />
+      <FriendChatPanel key={friend.id} friendId={friend.id} meId={me.id} meName={me.firstName} messages={lines} />
     </div>
   );
 }

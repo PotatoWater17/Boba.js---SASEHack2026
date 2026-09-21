@@ -1,4 +1,4 @@
-import { joinMeeting } from "@/app/actions";
+import { cancelJoinRequest, joinMeeting } from "@/app/actions";
 
 export function JoinGroupButton({
   meetingId,
@@ -24,7 +24,17 @@ export function JoinGroupButton({
     return <span className="pill">Group full</span>;
   }
   if (pending) {
-    return <span className="pill active">Join request pending</span>;
+    return (
+      <div className="action-btns">
+        <span className="pill active">Join request pending</span>
+        <form action={cancelJoinRequest}>
+          <input type="hidden" name="meetingId" value={meetingId} />
+          <button className="btn-ghost action-btn" type="submit">
+            Cancel request
+          </button>
+        </form>
+      </div>
+    );
   }
   return (
     <form action={joinMeeting}>

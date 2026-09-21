@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "studybuddyboard",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-20",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "studybuddyboard",
+      "database_id": "b149477c-f93a-4095-899a-b8ff84f0d855",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "studybuddyboard.potatowater.com",
+      "custom_domain": true
+    }
+  ]
+}

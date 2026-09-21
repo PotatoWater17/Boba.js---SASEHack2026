@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { acceptFriend, removeFriend } from "@/app/actions";
+import { unstable_noStore as noStore } from "next/cache";
+import { connection } from "next/server";
 import { Avatar } from "@/avatar";
 import { DashCalendar } from "./calendar";
-import { blockedUserIds, formatMeetDate, getMe, prisma, ymd } from "@/lib";
+import { blockedUserIds, formatMeetDate, getMe, prisma, timeToInput, ymd } from "@/lib";
 
 function calHref(year: number, month: number) {
   const d = new Date(year, month, 1);
@@ -16,18 +17,27 @@ function calHref(year: number, month: number) {
   return `/dashboard?cal=${y}-${m}#cal`;
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ cal?: string }>;
 }) {
+  noStore();
+  await connection();
   const me = await getMe();
   if (!me) redirect("/login");
 
   const meetings = await prisma.meeting.findMany({
     where: { members: { some: { userId: me.id } } },
     include: { members: { include: { user: true } } },
-    orderBy: [{ meetDate: "asc" }, { time: "asc" }],
+  });
+  meetings.sort((a, b) => {
+    const date = (a.meetDate || "").localeCompare(b.meetDate || "");
+    if (date) return date;
+    return (timeToInput(a.time) || a.time).localeCompare(timeToInput(b.time) || b.time);
   });
 
   const now = new Date();
@@ -53,9 +63,6 @@ export default async function DashboardPage({
     .filter((row) => row.status === "accepted")
     .map((row) => (row.fromId === me.id ? row.to : row.from))
     .filter((u) => !blocked.has(u.id));
-  const incoming = friendRows.filter(
-    (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
-  );
 
   const friendIds = friends.map((f) => f.id);
   const interactionScore = new Map<string, number>();
@@ -160,43 +167,6 @@ export default async function DashboardPage({
             {friends.length} buddies · View All Chats
           </Link>
         </div>
-        {incoming.length > 0 ? (
-          <div className="dash-meet-list" style={{ marginBottom: 14 }}>
-            {incoming.map((row, i) => (
-              <div
-                key={row.id}
-                className="dash-meet motion-stagger-item"
-                style={{ ["--motion-delay" as string]: `${i * 45}ms` }}
-              >
-                <Link href={`/profile/${row.from.id}`} className="dash-friend-link">
-                  <Avatar user={row.from} style={{ width: 36, height: 36, fontSize: 12 }} />
-                  <div className="dash-meet-main">
-                    <b>
-                      {row.from.firstName} {row.from.lastName}
-                    </b>
-                    <div className="dash-meet-meta">wants to be buddies</div>
-                  </div>
-                </Link>
-                <div className="action-btns">
-                  <form action={acceptFriend}>
-                    <input type="hidden" name="userId" value={row.from.id} />
-                    <input type="hidden" name="next" value="/dashboard" />
-                    <button type="submit" className="btn action-btn">
-                      Accept Buddy
-                    </button>
-                  </form>
-                  <form action={removeFriend}>
-                    <input type="hidden" name="userId" value={row.from.id} />
-                    <input type="hidden" name="next" value="/dashboard" />
-                    <button type="submit" className="btn-ghost action-btn">
-                      Decline
-                    </button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
         {friends.length === 0 ? (
           <div className="card">
             No buddies yet. Open someone&apos;s profile from a study buddy group and hit Add Buddy.

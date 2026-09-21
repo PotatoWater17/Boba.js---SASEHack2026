@@ -137,6 +137,8 @@ export default async function MeetingPage({
       {error === "owner" ? <p className="err">Group owners can&apos;t leave — delete the group instead.</p> : null}
       {error === "join" ? <p className="err">Join the group before chatting.</p> : null}
       {error === "private" ? <p className="err">This private group is invite-only — you can&apos;t request to join here.</p> : null}
+      {error === "blocked" ? <p className="err">You can&apos;t join this group.</p> : null}
+      {error === "ended" ? <p className="err">This study session already happened.</p> : null}
       {notice === "requested" ? <p className="ok">Join request sent — the owner will review it.</p> : null}
       {notice === "pending" ? <p className="ok">Your join request is already pending.</p> : null}
       {notice === "member-removed" ? (
@@ -297,6 +299,7 @@ export default async function MeetingPage({
           {error === "type" ? <p className="err">That file type isn&apos;t supported.</p> : null}
           {error === "size" ? <p className="err">File must be 8 MB or smaller.</p> : null}
           <GroupChatPanel
+            key={meeting.id}
             meetingId={meeting.id}
             meId={me.id}
             meFirst={me.firstName}

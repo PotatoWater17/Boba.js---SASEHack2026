@@ -1,72 +1,37 @@
+import { unstable_noStore as noStore } from "next/cache";
+import { groupActivityTable } from "@/group-activity";
 import { acceptedFriendIds, blockedUserIds, groupMessagePreview, prisma } from "@/lib";
+import type {
+  InboxBuddyRequest,
+  InboxDm,
+  InboxDmReact,
+  InboxGroup,
+  InboxGroupActivity,
+  InboxGroupReact,
+  InboxJoinRequest,
+  InboxMeetupInvite,
+  InboxPayload,
+} from "@/inbox-types";
 
-export type InboxDm = {
-  fromId: string;
-  msgId: string;
-  firstName: string;
-  lastName: string;
-  photoKey: string;
-  preview: string;
-  unread: number;
-};
-
-export type InboxGroup = {
-  meetingId: string;
-  msgId: string;
-  subject: string;
-  fromId: string;
-  firstName: string;
-  lastName: string;
-  photoKey: string;
-  preview: string;
-  unread: number;
-};
-
-export type InboxDmReact = {
-  noticeId: string;
-  actorId: string;
-  firstName: string;
-  lastName: string;
-  photoKey: string;
-  emoji: string;
-  preview: string;
-  unread: number;
-};
-
-export type InboxGroupReact = {
-  noticeId: string;
-  meetingId: string;
-  subject: string;
-  actorId: string;
-  firstName: string;
-  lastName: string;
-  photoKey: string;
-  emoji: string;
-  preview: string;
-  unread: number;
-};
-
-export type InboxPayload = {
-  dms: InboxDm[];
-  groups: InboxGroup[];
-  dmReacts: InboxDmReact[];
-  groupReacts: InboxGroupReact[];
-  friendNotices: number;
-  groupNotices: number;
-};
-
-export const emptyInbox = (): InboxPayload => ({
-  dms: [],
-  groups: [],
-  dmReacts: [],
-  groupReacts: [],
-  friendNotices: 0,
-  groupNotices: 0,
-});
+export type {
+  InboxBuddyRequest,
+  InboxDm,
+  InboxDmReact,
+  InboxGroup,
+  InboxGroupActivity,
+  InboxGroupReact,
+  InboxJoinRequest,
+  InboxMeetupInvite,
+  InboxPayload,
+} from "@/inbox-types";
+export { emptyInbox } from "@/inbox-types";
 
 export async function loadInbox(meId: string): Promise<InboxPayload> {
+  noStore();
   const [blocked, friendIds] = await Promise.all([blockedUserIds(meId), acceptedFriendIds(meId)]);
   const allowed = [...friendIds].filter((id) => !blocked.has(id));
+  const blockedList = [...blocked];
+  const notBlocked = blockedList.length ? { notIn: blockedList } : undefined;
 
   const unread = allowed.length
     ? await prisma.directMessage.findMany({
@@ -83,6 +48,16 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
         take: 40,
       })
     : [];
+  const friendNotices = allowed.length
+    ? await prisma.directMessage.count({
+        where: {
+          toId: meId,
+          seen: false,
+          unsent: false,
+          fromId: { in: allowed },
+        },
+      })
+    : 0;
 
   const dms: InboxDm[] = [];
   const seenDm = new Set<string>();
@@ -101,6 +76,7 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
       photoKey: msg.from.photoKey,
       preview: msg.text || (msg.fileName ? "Sent an attachment" : "New message"),
       unread: 1,
+      createdAt: msg.createdAt.toISOString(),
     });
   }
 
@@ -139,12 +115,101 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
     select: { meetingId: true, lastReadAt: true },
   });
 
+  const [buddyRows, inviteRows, joinRows] = await Promise.all([
+    prisma.friendship.findMany({
+      where: { toId: meId, status: "pending", ...(notBlocked ? { fromId: notBlocked } : {}) },
+      include: { from: { select: { id: true, firstName: true, lastName: true, photoKey: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
+    prisma.meetupInvite.findMany({
+      where: { toId: meId, status: "pending", ...(notBlocked ? { fromId: notBlocked } : {}) },
+      include: {
+        from: { select: { id: true, firstName: true, lastName: true, photoKey: true } },
+        meeting: { select: { id: true, subject: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
+    prisma.meetingJoinRequest.findMany({
+      where: {
+        status: "pending",
+        meeting: { hostId: meId },
+        ...(notBlocked ? { userId: notBlocked } : {}),
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, photoKey: true } },
+        meeting: { select: { id: true, subject: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
+  ]);
+
+  const buddyRequests: InboxBuddyRequest[] = buddyRows.map((row) => ({
+    fromId: row.from.id,
+    firstName: row.from.firstName,
+    lastName: row.from.lastName,
+    photoKey: row.from.photoKey,
+    createdAt: row.createdAt.toISOString(),
+  }));
+  const meetupInvites: InboxMeetupInvite[] = inviteRows.map((row) => ({
+    inviteId: row.id,
+    meetingId: row.meeting.id,
+    subject: row.meeting.subject,
+    fromId: row.from.id,
+    firstName: row.from.firstName,
+    lastName: row.from.lastName,
+    photoKey: row.from.photoKey,
+    createdAt: row.createdAt.toISOString(),
+  }));
+  const joinRequests: InboxJoinRequest[] = joinRows.map((row) => ({
+    requestId: row.id,
+    meetingId: row.meeting.id,
+    subject: row.meeting.subject,
+    fromId: row.user.id,
+    firstName: row.user.firstName,
+    lastName: row.user.lastName,
+    photoKey: row.user.photoKey,
+    createdAt: row.createdAt.toISOString(),
+  }));
+
+  const activityTable = groupActivityTable();
+  const activityRows = activityTable
+    ? await activityTable.findMany({
+        where: { userId: meId, seen: false },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      })
+    : [];
+  const groupActivity: InboxGroupActivity[] = activityRows.map((row) => ({
+    noticeId: row.id,
+    kind: row.kind === "kicked" || row.kind === "disbanded" ? row.kind : "leave",
+    meetingId: row.meetingId,
+    subject: row.subject,
+    actorId: row.actorId,
+    actorName: row.actorName,
+    actorPhoto: row.actorPhoto,
+    createdAt: row.createdAt.toISOString(),
+  }));
+  const activityCount = buddyRequests.length + meetupInvites.length + joinRequests.length + groupActivity.length;
+
   const groups: InboxGroup[] = [];
   let groupNotices = 0;
 
   if (memberships.length) {
     const lastRead = new Map(memberships.map((m) => [m.meetingId, m.lastReadAt.getTime()]));
     const meetingIds = memberships.map((m) => m.meetingId);
+    const unreadTimes = await prisma.message.findMany({
+      where: {
+        meetingId: { in: meetingIds },
+        userId: { not: meId },
+        unsent: false,
+      },
+      select: { meetingId: true, createdAt: true },
+    });
+    groupNotices = unreadTimes.filter((msg) => msg.createdAt.getTime() > (lastRead.get(msg.meetingId) || 0)).length;
+
     const msgs = await prisma.message.findMany({
       where: {
         meetingId: { in: meetingIds },
@@ -158,8 +223,6 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
       orderBy: { createdAt: "desc" },
       take: 80,
     });
-
-    groupNotices = msgs.filter((msg) => msg.createdAt.getTime() > (lastRead.get(msg.meetingId) || 0)).length;
 
     const seenGroup = new Set<string>();
     for (const msg of msgs) {
@@ -180,6 +243,7 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
         photoKey: msg.authorRemoved ? "" : msg.user.photoKey,
         preview: groupMessagePreview(msg),
         unread: 1,
+        createdAt: msg.createdAt.toISOString(),
       });
     }
   }
@@ -223,7 +287,12 @@ export async function loadInbox(meId: string): Promise<InboxPayload> {
     groups,
     dmReacts,
     groupReacts,
-    friendNotices: dms.reduce((n, row) => n + row.unread, 0),
+    buddyRequests,
+    meetupInvites,
+    joinRequests,
+    groupActivity,
+    friendNotices,
     groupNotices,
+    activityCount,
   };
 }

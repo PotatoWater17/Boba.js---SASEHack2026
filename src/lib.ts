@@ -2,7 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { readSession } from "@/auth";
 import { ensureVercelSqlite } from "@/vercel-sqlite";
 
-const databaseUrl = ensureVercelSqlite();
+function isCloudflareWorkers() {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
 
 export {
   hashPassword,
@@ -34,21 +36,35 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Bump when Prisma schema changes so dev picks up a fresh client after generate. */
-const PRISMA_CLIENT_VERSION = "2026-09-20-sqlite-abs-v1";
+const PRISMA_CLIENT_VERSION = "2026-09-21-group-activity-v2";
+
+function isPostgresUrl(raw: string) {
+  return /^(postgres|postgresql):/i.test(raw);
+}
 
 function createPrisma() {
+  if (isCloudflareWorkers()) {
+    // Lazy load so `next dev` keeps using file SQLite / Prisma Postgres on Vercel.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { createCloudflarePrisma } = require("./cloudflare-prisma") as typeof import("./cloudflare-prisma");
+    return createCloudflarePrisma();
+  }
+
+  const databaseUrl = ensureVercelSqlite();
   const client = new PrismaClient({
     log: ["error"],
     datasources: databaseUrl ? { db: { url: databaseUrl } } : undefined,
   });
-  void (async () => {
-    try {
-      await client.$queryRawUnsafe("PRAGMA busy_timeout = 5000");
-      await client.$queryRawUnsafe("PRAGMA journal_mode = WAL");
-    } catch {
-      /* sqlite pragma is best-effort */
-    }
-  })();
+  if (!isPostgresUrl(databaseUrl)) {
+    void (async () => {
+      try {
+        await client.$queryRawUnsafe("PRAGMA busy_timeout = 5000");
+        await client.$queryRawUnsafe("PRAGMA journal_mode = WAL");
+      } catch {
+        /* sqlite pragma is best-effort */
+      }
+    })();
+  }
   return client;
 }
 
@@ -93,6 +109,9 @@ export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function flushSqliteWrites() {
+  if (isCloudflareWorkers()) return;
+  const url = process.env.DATABASE_URL || "";
+  if (/^(postgres|postgresql):/i.test(url)) return;
   try {
     await prisma.$executeRawUnsafe("PRAGMA wal_checkpoint(PASSIVE)");
   } catch {
@@ -273,8 +292,7 @@ export function formatMeetDate(value: string) {
 }
 
 export function formatTimeInput(value: string) {
-  // expects "HH:MM" from <input type="time">
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim());
   if (!match) return "";
   let hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -523,7 +541,7 @@ export function buddyMatch(
   other: BuddySearchPrefs & { year?: string },
   meetups: BuddyMeetupLite[] = [],
 ) {
-  if (!fieldEquals(me.year, other.year) && me.year?.trim() && other.year?.trim()) {
+  if (me.year?.trim() && !fieldEquals(me.year, other.year)) {
     return { score: 0, reasons: [] as string[] };
   }
   if (me.university?.trim() && !fieldEquals(me.university, other.university)) {

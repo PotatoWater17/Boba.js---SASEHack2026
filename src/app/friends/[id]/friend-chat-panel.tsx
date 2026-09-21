@@ -66,12 +66,15 @@ export function FriendChatPanel({
       const res = await fetch(`/api/chat/dm?userId=${encodeURIComponent(friendId)}`, { cache: "no-store" });
       if (!res.ok || ignore) return;
       const data = (await res.json()) as { messages?: DmLine[] };
-      if (!Array.isArray(data.messages)) return;
-      setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.fromId));
+      const incoming = data.messages;
+      if (!Array.isArray(incoming)) return;
+      setLive((cur) => mergeChatLines(incoming, cur, [], (m) => m.fromId));
     }
     void pull();
+    const id = window.setInterval(() => void pull(), 2500);
     return () => {
       ignore = true;
+      window.clearInterval(id);
     };
   }, [friendId]);
 
@@ -107,7 +110,7 @@ export function FriendChatPanel({
       pending: true,
       previewUrl,
     };
-    setExtra((cur) => [...cur.filter((m) => !m.pending), pending]);
+    setExtra((cur) => [...cur, pending]);
     saveChatPersist(persistKey, [pending], unsentIds);
 
     try {
@@ -138,8 +141,9 @@ export function FriendChatPanel({
         void fetch(`/api/chat/dm?userId=${encodeURIComponent(friendId)}`, { cache: "no-store" })
           .then((res) => (res.ok ? res.json() : null))
           .then((data: { messages?: DmLine[] } | null) => {
-            if (Array.isArray(data?.messages)) {
-              setLive((cur) => mergeChatLines(data.messages, cur, [], (m) => m.fromId));
+            const incoming = data?.messages;
+            if (Array.isArray(incoming)) {
+              setLive((cur) => mergeChatLines(incoming, cur, [], (m) => m.fromId));
             }
           })
           .catch(() => {});

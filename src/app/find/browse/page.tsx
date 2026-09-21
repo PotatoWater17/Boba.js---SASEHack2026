@@ -74,7 +74,7 @@ export default async function BrowseMeetupsPage({
     }))
     .filter((row) => {
       if (!onlyMine) return true;
-      if (myClasses.length === 0) return true;
+      if (myClasses.length === 0) return false;
       return row.score > 0;
     })
     .sort((a, b) => {
@@ -133,6 +133,7 @@ export default async function BrowseMeetupsPage({
       </header>
 
       <BrowseFilters
+        key={`${allSchools ? "all" : uniFilter}|${subject}|${kind || ""}|${style || ""}|${format}|${onlyMine}`}
         defaultUni={allSchools ? "" : uniFilter}
         defaultSubject={subject}
         defaultKind={kind || ""}
@@ -154,7 +155,16 @@ export default async function BrowseMeetupsPage({
       <div style={{ display: "grid", gap: 12 }}>
         {pageRows.length === 0 ? (
           <div className="card">
-            No groups match these filters yet. <Link href="/find/create">Create a study buddy group</Link>
+            {onlyMine && myClasses.length === 0 ? (
+              <>
+                Add preferred classes on your profile first.{" "}
+                <Link href="/profile/me?edit=1">Edit preferences</Link>
+              </>
+            ) : (
+              <>
+                No groups match these filters yet. <Link href="/find/create">Create a study buddy group</Link>
+              </>
+            )}
           </div>
         ) : (
           pageRows.map(({ meeting: m, score }) => {

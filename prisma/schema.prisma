@@ -47,6 +47,7 @@ model User {
   messageReactions MessageReaction[]
   reactionNotices ReactionNotice[] @relation("NoticeTo")
   reactionActs    ReactionNotice[] @relation("NoticeFrom")
+  groupActivity   GroupActivityNotice[]
   passwordResets  PasswordResetRequest[]
   blocksGiven     Block[] @relation("BlocksGiven")
   blocksReceived  Block[] @relation("BlocksReceived")
@@ -225,4 +226,23 @@ model ReactionNotice {
   createdAt DateTime @default(now())
   user      User     @relation("NoticeTo", fields: [userId], references: [id], onDelete: Cascade)
   actor     User     @relation("NoticeFrom", fields: [actorId], references: [id], onDelete: Cascade)
+}
+
+/// Durable bell notice when someone leaves, is kicked, or a group is disbanded.
+/// Snapshots names because the meeting row may already be gone.
+model GroupActivityNotice {
+  id         String   @id @default(cuid())
+  userId     String
+  /// leave | kicked | disbanded
+  kind       String
+  meetingId  String   @default("")
+  subject    String
+  actorId    String   @default("")
+  actorName  String   @default("")
+  actorPhoto String   @default("")
+  seen       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, seen, createdAt])
 }

@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { acceptFriend, removeFriend, unblockUser } from "@/app/actions";
+import { unstable_noStore as noStore } from "next/cache";
+import { connection } from "next/server";
+import { unblockUser } from "@/app/actions";
 import { Avatar } from "@/avatar";
 import { blockedUserIds, getMe, prisma, timeAgo, usersBlockedByMe } from "@/lib";
 import { serverWeekAgoMs } from "@/server-time";
 import { PeopleSearch } from "./search";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -20,6 +25,8 @@ export default async function FriendsPage({
 }: {
   searchParams: Promise<{ q?: string; filter?: string; error?: string }>;
 }) {
+  noStore();
+  await connection();
   const me = await getMe();
   if (!me) redirect("/login");
 
@@ -33,12 +40,6 @@ export default async function FriendsPage({
     include: { from: true, to: true },
     orderBy: { createdAt: "desc" },
   });
-  const incoming =
-    filter === "blocked"
-      ? []
-      : friendRows.filter(
-          (row) => row.status === "pending" && row.toId === me.id && !blocked.has(row.fromId),
-        );
   const friends = friendRows
     .filter((row) => row.status === "accepted")
     .map((row) => (row.fromId === me.id ? row.to : row.from))
@@ -140,40 +141,6 @@ export default async function FriendsPage({
           </Link>
         ))}
       </div>
-
-      {incoming.length > 0 ? (
-        <div className="chat-list" style={{ marginBottom: 18 }}>
-          {incoming.map((row) => (
-            <div key={row.id} className="chat-row" style={{ justifyContent: "space-between" }}>
-              <Link href={`/profile/${row.from.id}`} className="chat-row-main">
-                <Avatar user={row.from} />
-                <span className="chat-row-text">
-                  <b>
-                    {row.from.firstName} {row.from.lastName}
-                  </b>
-                  <span className="chat-row-preview"> wants to be buddies</span>
-                </span>
-              </Link>
-              <div className="action-btns">
-                <form action={acceptFriend}>
-                  <input type="hidden" name="userId" value={row.from.id} />
-                  <input type="hidden" name="next" value="/friends" />
-                  <button type="submit" className="btn action-btn">
-                    Accept Buddy
-                  </button>
-                </form>
-                <form action={removeFriend}>
-                  <input type="hidden" name="userId" value={row.from.id} />
-                  <input type="hidden" name="next" value="/friends" />
-                  <button type="submit" className="btn-ghost action-btn">
-                    Decline
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
 
       {filter === "blocked" ? (
         blockedByMe.length === 0 ? (

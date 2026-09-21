@@ -74,7 +74,7 @@ export async function readAvatarBytes(key: string) {
   }
   for (const filePath of candidates) {
     try {
-      return await readFile(filePath);
+      return await readFile(/* turbopackIgnore: true */ filePath);
     } catch {
       /* try the next location */
     }

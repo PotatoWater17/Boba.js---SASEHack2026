@@ -41,6 +41,10 @@ export function FilterSelect({
   const listId = useId();
 
   useEffect(() => {
+    setValue(defaultValue);
+  }, [defaultValue]);
+
+  useEffect(() => {
     function onPointerDown(e: PointerEvent) {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }

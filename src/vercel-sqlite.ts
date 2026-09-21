@@ -1,7 +1,5 @@
-import { copyFileSync, existsSync, statSync } from "fs";
+import { existsSync, statSync } from "fs";
 import path from "path";
-
-const TMP_DB = "/tmp/studybuddy.db";
 
 function sqliteUrl(filePath: string) {
   return `file:${filePath.replace(/\\/g, "/")}`;
@@ -26,6 +24,10 @@ function projectRoot() {
   return process.cwd();
 }
 
+function isPostgresUrl(raw: string) {
+  return /^(postgres|postgresql):/i.test(raw);
+}
+
 /** Resolve SQLite `file:` URLs to one absolute path so actions and page renders share a DB. */
 export function resolveSqliteFile(raw: string) {
   const root = projectRoot();
@@ -36,42 +38,29 @@ export function resolveSqliteFile(raw: string) {
   if (!filePath) return prismaDev;
   if (path.isAbsolute(filePath)) return filePath;
 
-  const fromCwd = path.resolve(process.cwd(), filePath);
+  const fromCwd = path.resolve(/* turbopackIgnore: true */ process.cwd(), filePath);
   const fromPrisma = path.join(root, "prisma", path.basename(filePath));
-  const existing = [fromPrisma, fromCwd].filter((candidate) => existsSync(candidate));
+  const existing = [fromPrisma, fromCwd].filter((candidate) => existsSync(/* turbopackIgnore: true */ candidate));
   if (existing.length === 0) return fromPrisma;
   if (existing.length === 1) return existing[0];
   return existing.sort((a, b) => fileMtime(b) - fileMtime(a))[0];
 }
 
 /**
- * Vercel functions can only write under /tmp. Copy the bundled demo SQLite
- * once per instance so Prisma can open a writable database.
+ * Local `next dev` keeps file SQLite. Vercel must use a shared Postgres
+ * DATABASE_URL — never copy a demo DB to /tmp (that split-brain ate chats).
  */
 export function ensureVercelSqlite() {
   const root = projectRoot();
-  const demoDb = path.join(root, "prisma", "demo.db");
   const prismaDev = path.join(root, "prisma", "dev.db");
+  const raw = process.env.DATABASE_URL || sqliteUrl(prismaDev);
 
-  if (!process.env.VERCEL) {
-    const raw = process.env.DATABASE_URL || sqliteUrl(prismaDev);
-    if (raw.startsWith("file:")) return sqliteUrl(resolveSqliteFile(raw));
-    return raw;
+  if (isPostgresUrl(raw)) return raw;
+
+  if (process.env.VERCEL) {
+    throw new Error("Vercel requires a Postgres DATABASE_URL. SQLite /tmp is disabled.");
   }
 
-  try {
-    if (!existsSync(TMP_DB) && existsSync(demoDb)) {
-      copyFileSync(demoDb, TMP_DB);
-    }
-  } catch (err) {
-    console.error("Failed to copy demo SQLite to /tmp", err);
-  }
-
-  const url = existsSync(TMP_DB)
-    ? sqliteUrl(TMP_DB)
-    : existsSync(demoDb)
-      ? sqliteUrl(demoDb)
-      : sqliteUrl(path.join(root, "prisma", "demo.db"));
-  process.env.DATABASE_URL = url;
-  return url;
+  if (raw.startsWith("file:")) return sqliteUrl(resolveSqliteFile(raw));
+  return raw;
 }

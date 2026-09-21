@@ -61,21 +61,33 @@ function lineTime(iso?: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function linePrint<T extends { text?: string; fileName?: string }>(row: T, who: (row: T) => string) {
-  return `${who(row)}\n${row.text || ""}\n${row.fileName || ""}`;
-}
-
-function pickChatLine<T extends { id: string; unsent: boolean; pending?: boolean }>(a: T, b: T): T {
+function pickChatLine<
+  T extends {
+    id: string;
+    unsent: boolean;
+    pending?: boolean;
+    reactions?: unknown[];
+    authorRemoved?: boolean;
+    invite?: unknown;
+    previewUrl?: string;
+  },
+>(a: T, b: T): T {
   const aTmp = a.id.startsWith("tmp-");
   const bTmp = b.id.startsWith("tmp-");
   const primary = aTmp && !bTmp ? b : bTmp && !aTmp ? a : a.pending && !b.pending ? b : b.pending && !a.pending ? a : b;
   const other = primary === a ? b : a;
+  const aReacts = Array.isArray(a.reactions) ? a.reactions.length : 0;
+  const bReacts = Array.isArray(b.reactions) ? b.reactions.length : 0;
   return {
     ...other,
     ...primary,
     id: aTmp && !bTmp ? b.id : bTmp && !aTmp ? a.id : primary.id,
     unsent: Boolean(a.unsent || b.unsent),
     pending: Boolean(a.pending && b.pending),
+    reactions: (bReacts > aReacts ? b.reactions : a.reactions) as T["reactions"],
+    authorRemoved: Boolean(a.authorRemoved || b.authorRemoved),
+    invite: primary.invite ?? other.invite,
+    previewUrl: primary.previewUrl || other.previewUrl,
   };
 }
 
@@ -83,32 +95,19 @@ export function mergeChatLines<T extends { id: string; unsent: boolean; text?: s
   server: T[],
   extra: T[],
   unsentIds: string[],
-  who: (row: T) => string = () => "",
+  _who: (row: T) => string = () => "",
 ) {
   const unsent = new Set(unsentIds);
   const byId = new Map<string, T>();
-  for (const raw of [...server, ...extra]) {
+  for (const raw of [...extra, ...server]) {
     const row = unsent.has(raw.id) ? { ...raw, unsent: true } : raw;
     const prev = byId.get(row.id);
     byId.set(row.id, prev ? pickChatLine(prev, row) : row);
   }
 
-  const ordered = [...byId.values()].sort((a, b) => {
+  return [...byId.values()].sort((a, b) => {
     const dt = lineTime(a.createdAt) - lineTime(b.createdAt);
     if (dt !== 0) return dt;
     return a.id.localeCompare(b.id);
   });
-
-  const collapsed: T[] = [];
-  for (const row of ordered) {
-    const print = linePrint(row, who);
-    const dupAt = collapsed.findIndex((seen) => {
-      if (linePrint(seen, who) !== print) return false;
-      const tmp = seen.id.startsWith("tmp-") || row.id.startsWith("tmp-");
-      return tmp && Math.abs(lineTime(seen.createdAt) - lineTime(row.createdAt)) < 120000;
-    });
-    if (dupAt < 0) collapsed.push(row);
-    else collapsed[dupAt] = pickChatLine(collapsed[dupAt], row);
-  }
-  return collapsed;
 }

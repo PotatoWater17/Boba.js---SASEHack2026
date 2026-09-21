@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
+import { connection } from "next/server";
 import { Avatar, photoSrc } from "@/avatar";
 import { ClassBubbles, ExamPrepFields, MajorPicker, UniversityPicker, YearPicker } from "@/ui";
-import { acceptFriend, addFriend, blockUser, changePassword, removeFriend, unblockUser, updateProfile } from "@/app/actions";
+import { acceptFriend, addFriend, blockUser, cancelFriendRequest, changePassword, declineFriend, removeFriend, unblockUser, updateProfile } from "@/app/actions";
 import { formatAccountId } from "@/account-id";
 import { isUserAdmin } from "@/admin";
 import {
@@ -19,6 +21,9 @@ import {
 import { MutualConnectionsButton } from "./mutual-connections";
 import { PhotoField } from "./photo";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProfilePage({
   params,
   searchParams,
@@ -26,6 +31,8 @@ export default async function ProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ edit?: string; error?: string; pw?: string; blocked?: string; reconnect?: string }>;
 }) {
+  noStore();
+  await connection();
   const me = await getMe();
   if (!me) redirect("/login");
 
@@ -266,7 +273,7 @@ export default async function ProfilePage({
                       Accept Buddy
                     </button>
                   </form>
-                  <form action={removeFriend} className="profile-action-form">
+                  <form action={declineFriend} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
                     <button type="submit" className="btn-ghost profile-action-btn">
                       Decline
@@ -276,7 +283,7 @@ export default async function ProfilePage({
               ) : iSent ? (
                 <>
                   <span className="action-status profile-action-btn">Request Sent</span>
-                  <form action={removeFriend} className="profile-action-form">
+                  <form action={cancelFriendRequest} className="profile-action-form">
                     <input type="hidden" name="userId" value={user.id} />
                     <button type="submit" className="btn-ghost profile-action-btn">
                       Cancel

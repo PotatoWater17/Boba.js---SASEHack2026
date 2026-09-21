@@ -23,6 +23,10 @@ import { inferMeetingOnline } from "@/meeting-format";
 import { searchUniversities, UNIVERSITIES } from "@/universities";
 import { isYearOption, YEAR_OPTIONS } from "@/years";
 
+function localYmd(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function timeFieldValue(value?: string) {
   if (!value) return "";
   const trimmed = value.trim();
@@ -410,7 +414,7 @@ export function ExamPrepFields({
           type="date"
           name="examDate"
           defaultValue={defaultDate}
-          min={allowPastExamDate ? undefined : new Date().toISOString().slice(0, 10)}
+          min={allowPastExamDate ? undefined : localYmd()}
         />
       </label>
       <label>
@@ -920,6 +924,7 @@ export function CreateMeetupForm({
           name="meetDate"
           type="date"
           required
+          min={meeting ? undefined : localYmd()}
           value={meetDate}
           onChange={(e) => setMeetDate(e.target.value)}
         />
@@ -931,6 +936,7 @@ export function CreateMeetupForm({
           name="time"
           type="time"
           required
+          step={60}
           value={time}
           onChange={(e) => setTime(e.target.value)}
         />

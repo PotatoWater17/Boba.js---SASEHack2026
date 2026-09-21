@@ -622,6 +622,7 @@ async function main() {
   }
 
   await prisma.passwordResetRequest.deleteMany();
+  await prisma.groupActivityNotice.deleteMany();
   await prisma.reactionNotice.deleteMany();
   await prisma.dmReaction.deleteMany();
   await prisma.messageReaction.deleteMany();

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FilterSelect } from "@/filter-select";
 import { GROUP_KINDS, MEETUP_STYLES, searchCourses } from "@/courses";
 import { MEETING_FORMAT_FILTERS } from "@/meeting-format";
@@ -34,6 +34,13 @@ export function BrowseFilters({
   const [uniOpen, setUniOpen] = useState(false);
   const [subject, setSubject] = useState(defaultSubject);
   const [subjectOpen, setSubjectOpen] = useState(false);
+
+  useEffect(() => {
+    setUni(defaultUni);
+  }, [defaultUni]);
+  useEffect(() => {
+    setSubject(defaultSubject);
+  }, [defaultSubject]);
 
   const uniTrimmed = uni.trim();
   const uniMatches = useMemo(() => {
