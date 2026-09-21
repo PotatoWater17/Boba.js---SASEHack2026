@@ -40,6 +40,10 @@ export function ChatReactions({
   const kbRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setReactions(initial);
+  }, [initial]);
+
+  useEffect(() => {
     setMounted(true);
   }, []);
 

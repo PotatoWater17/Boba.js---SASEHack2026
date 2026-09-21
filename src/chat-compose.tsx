@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { CHAT_ATTACH_ACCEPT, validChatAttachFile } from "@/chat-attach";
 import { useRegisterChatDrop } from "@/chat-drop";
+import { isNextRedirect } from "@/next-redirect";
 
 export function ChatCompose({
   action,
   hidden,
   placeholder = "Type a message...",
 }: {
-  action: (formData: FormData) => void;
+  action: (formData: FormData) => Promise<{ ok?: boolean; error?: string; message?: { id: string } } | void>;
   hidden: Record<string, string>;
   placeholder?: string;
 }) {
@@ -78,9 +79,29 @@ export function ChatCompose({
 
     setSending(true);
     try {
-      await action(fd);
-    } catch {
-      // server actions use redirect() which throws; parent remounts compose on success via key
+      const result = await action(fd);
+      if (result?.error === "type") {
+        setRejectHint("That file type isn't allowed.");
+        return;
+      }
+      if (result?.error === "size") {
+        setRejectHint("Keep attachments under 8 MB.");
+        return;
+      }
+      if (result?.error === "empty") {
+        setRejectHint("Type a message or attach a file.");
+        return;
+      }
+      if (result?.error) {
+        setRejectHint("Couldn't send. Try again.");
+        return;
+      }
+      form.reset();
+      setFile(null);
+      setPick((n) => n + 1);
+    } catch (err) {
+      if (isNextRedirect(err)) throw err;
+      setRejectHint("Couldn't send. Try again.");
     } finally {
       setSending(false);
     }
@@ -131,13 +152,6 @@ export function ChatCompose({
             data-1p-ignore
             data-lpignore="true"
             data-form-type="other"
-            readOnly
-            onFocus={(e) => {
-              e.currentTarget.readOnly = false;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.readOnly = true;
-            }}
           />
           <label className="pill dm-attach">
             Attach

@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isNextRedirect } from "@/next-redirect";
+import { revalidatePath } from "next/cache";
 import { groupKindById, MEETUP_STYLES, resolveCourse } from "@/courses";
 import { nextAccountNo } from "@/account-id";
 import { getAdmin } from "@/admin";
@@ -11,10 +13,17 @@ import { purgeMeeting, removeMeetingIfEmpty } from "@/meeting-cleanup";
 import { addMeetingMemberIfRoom } from "@/meeting-members";
 import { clientIp, rateLimit } from "@/rate-limit";
 import {
+  dmThreadKey,
+  groupThreadKey,
+  markOverlayUnsent,
+  rememberChatOverlay,
+} from "@/chat-overlay";
+import {
   blockedByMe,
   blockedUserIds,
   clearUser,
   ensureAcceptedFriendship,
+  flushSqliteWrites,
   formatTimeInput,
   getMe,
   hashPassword,
@@ -28,7 +37,21 @@ import {
   setUser,
   splitList,
   verifyPassword,
+  withDbRetry,
 } from "@/lib";
+
+function refreshFriendChat(userId: string) {
+  revalidatePath(`/friends/${userId}`);
+  revalidatePath("/friends");
+  revalidatePath("/dashboard");
+  revalidatePath("/", "layout");
+}
+
+function refreshGroupChat(meetingId: string) {
+  revalidatePath(`/meetings/${meetingId}`);
+  revalidatePath("/groups");
+  revalidatePath("/", "layout");
+}
 
 export async function signup(formData: FormData) {
   const email = String(formData.get("email") || "")
@@ -64,9 +87,7 @@ export async function signup(formData: FormData) {
 
     await setUser(user.id, user.sessionVersion);
   } catch (err) {
-    if (typeof err === "object" && err && "digest" in err && String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
+    if (isNextRedirect(err)) throw err;
     console.error("signup failed", err);
     redirect("/signup?error=server");
   }
@@ -103,9 +124,7 @@ export async function login(formData: FormData) {
     const fresh = await prisma.user.findUnique({ where: { id: user.id } });
     await setUser(user.id, fresh?.sessionVersion ?? 0);
   } catch (err) {
-    if (typeof err === "object" && err && "digest" in err && String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) {
-      throw err;
-    }
+    if (isNextRedirect(err)) throw err;
     console.error("login failed", err);
     redirect("/login?error=server");
   }
@@ -294,9 +313,9 @@ export async function createMeeting(
   const meetDate = String(formData.get("meetDate") || "").trim();
   const location = String(formData.get("location") || "").trim();
   const isOnline = formData.get("isOnline") === "1";
-  const university = resolveUniversity(String(formData.get("university") || me.university));
+  const university = resolveUniversity(String(formData.get("university") || ""));
   const notes = String(formData.get("notes") || "").trim().slice(0, 300);
-  const groupKind = String(formData.get("groupKind") || "small").trim();
+  const groupKind = String(formData.get("groupKind") || "").trim();
   const style = String(formData.get("style") || "").trim();
   const maxSizeRaw = Number(formData.get("maxSize") || 0);
 
@@ -330,27 +349,34 @@ export async function createMeeting(
   const isPrivate = formData.get("isPrivate") === "1";
   const requireApproval = isPrivate ? false : formData.get("requireApproval") === "1";
 
-  const meeting = await prisma.meeting.create({
-    data: {
-      subject,
-      topic: topics.join(", "),
-      time,
-      meetDate,
-      location,
-      isOnline,
-      university,
-      notes,
-      maxSize,
-      groupKind: kind.id,
-      style,
-      isPrivate,
-      requireApproval,
-      hostId: me.id,
-      members: { create: [{ userId: me.id }] },
-    },
-  });
-
-  redirect(`/meetings/${meeting.id}`);
+  try {
+    const meeting = await withDbRetry(() =>
+      prisma.meeting.create({
+        data: {
+          subject,
+          topic: topics.join(", "),
+          time,
+          meetDate,
+          location,
+          isOnline,
+          university,
+          notes,
+          maxSize,
+          groupKind: kind.id,
+          style,
+          isPrivate,
+          requireApproval,
+          hostId: me.id,
+          members: { create: [{ userId: me.id }] },
+        },
+      }),
+    );
+    redirect(`/meetings/${meeting.id}`);
+  } catch (err) {
+    if (isNextRedirect(err)) throw err;
+    console.error("createMeeting failed", err);
+    return { error: "Could not post this group. Try again." };
+  }
 }
 
 export async function updateMeeting(
@@ -374,9 +400,9 @@ export async function updateMeeting(
   const meetDate = String(formData.get("meetDate") || "").trim();
   const location = String(formData.get("location") || "").trim();
   const isOnline = formData.get("isOnline") === "1";
-  const university = resolveUniversity(String(formData.get("university") || me.university));
+  const university = resolveUniversity(String(formData.get("university") || ""));
   const notes = String(formData.get("notes") || "").trim().slice(0, 300);
-  const groupKind = String(formData.get("groupKind") || "small").trim();
+  const groupKind = String(formData.get("groupKind") || "").trim();
   const style = String(formData.get("style") || "").trim();
   const maxSizeRaw = Number(formData.get("maxSize") || 0);
 
@@ -414,27 +440,34 @@ export async function updateMeeting(
     return { error: `Max buddies can't be under ${memberCount} (buddies already in the group).` };
   }
 
-  await prisma.meeting.update({
-    where: { id: meetingId },
-    data: {
-      subject,
-      topic: topics.join(", "),
-      time,
-      meetDate,
-      location,
-      isOnline,
-      university,
-      notes,
-      maxSize,
-      groupKind: kind.id,
-      style,
-      isPrivate: formData.get("isPrivate") === "1",
-      requireApproval:
-        formData.get("isPrivate") === "1" ? false : formData.get("requireApproval") === "1",
-    },
-  });
-
-  redirect(`/meetings/${meetingId}`);
+  try {
+    await withDbRetry(() =>
+      prisma.meeting.update({
+        where: { id: meetingId },
+        data: {
+          subject,
+          topic: topics.join(", "),
+          time,
+          meetDate,
+          location,
+          isOnline,
+          university,
+          notes,
+          maxSize,
+          groupKind: kind.id,
+          style,
+          isPrivate: formData.get("isPrivate") === "1",
+          requireApproval:
+            formData.get("isPrivate") === "1" ? false : formData.get("requireApproval") === "1",
+        },
+      }),
+    );
+    redirect(`/meetings/${meetingId}`);
+  } catch (err) {
+    if (isNextRedirect(err)) throw err;
+    console.error("updateMeeting failed", err);
+    return { error: "Could not save this group. Try again." };
+  }
 }
 
 export async function joinMeeting(formData: FormData) {
@@ -601,22 +634,62 @@ export async function sendMessage(formData: FormData) {
 
   if (file) {
     const saved = await saveAttach(file);
-    if ("error" in saved) redirect(`/meetings/${meetingId}?error=${saved.error}`);
+    if ("error" in saved) {
+      return { error: saved.error === "size" ? "size" : "type" };
+    }
     fileName = saved.name;
     fileKey = saved.key;
     fileMime = saved.mime;
   }
 
-  if (!text && !fileKey) redirect(`/meetings/${meetingId}?error=empty`);
+  if (!text && !fileKey) return { error: "empty" as const };
 
-  await prisma.message.create({
-    data: { meetingId, userId: me.id, text, fileName, fileKey, fileMime },
-  });
-  await prisma.member.update({
-    where: { meetingId_userId: { meetingId, userId: me.id } },
-    data: { lastReadAt: new Date() },
-  });
-  redirect(`/meetings/${meetingId}`);
+  let created;
+  try {
+    created = await withDbRetry(() =>
+      prisma.message.create({
+        data: { meetingId, userId: me.id, text, fileName, fileKey, fileMime },
+      }),
+    );
+    await flushSqliteWrites();
+    await withDbRetry(() =>
+      prisma.member.update({
+        where: { meetingId_userId: { meetingId, userId: me.id } },
+        data: { lastReadAt: new Date() },
+      }),
+    );
+  } catch {
+    return { error: "send" as const };
+  }
+  try {
+    await rememberChatOverlay(groupThreadKey(meetingId), {
+      k: "g",
+      id: created.id,
+      at: created.createdAt.toISOString(),
+      text: created.text,
+      userId: me.id,
+      firstName: me.firstName,
+      lastName: me.lastName,
+      photoKey: me.photoKey,
+      fileKey: created.fileKey || undefined,
+      fileName: created.fileName || undefined,
+      fileMime: created.fileMime || undefined,
+    });
+  } catch {
+    /* overlay is a backup if sqlite is lost on refresh */
+  }
+  refreshGroupChat(meetingId);
+  return {
+    ok: true as const,
+    message: {
+      id: created.id,
+      createdAt: created.createdAt.toISOString(),
+      text: created.text,
+      fileKey: created.fileKey,
+      fileName: created.fileName,
+      fileMime: created.fileMime,
+    },
+  };
 }
 
 export async function markGroupSeen(meetingId: string) {
@@ -814,18 +887,54 @@ export async function sendDm(formData: FormData) {
 
   if (file) {
     const saved = await saveAttach(file);
-    if ("error" in saved) redirect(`/friends/${userId}?error=${saved.error}`);
+    if ("error" in saved) {
+      return { error: saved.error === "size" ? "size" : "type" };
+    }
     fileName = saved.name;
     fileKey = saved.key;
     fileMime = saved.mime;
   }
 
-  if (!text && !fileKey) redirect(`/friends/${userId}?error=empty`);
+  if (!text && !fileKey) return { error: "empty" as const };
 
-  await prisma.directMessage.create({
-    data: { fromId: me.id, toId: userId, text, fileName, fileKey, fileMime, seen: false },
-  });
-  redirect(`/friends/${userId}`);
+  let created;
+  try {
+    created = await withDbRetry(() =>
+      prisma.directMessage.create({
+        data: { fromId: me.id, toId: userId, text, fileName, fileKey, fileMime, seen: false },
+      }),
+    );
+    await flushSqliteWrites();
+  } catch {
+    return { error: "send" as const };
+  }
+  try {
+    await rememberChatOverlay(dmThreadKey(me.id, userId), {
+      k: "d",
+      id: created.id,
+      at: created.createdAt.toISOString(),
+      text: created.text,
+      fromId: me.id,
+      fromName: me.firstName,
+      fileKey: created.fileKey || undefined,
+      fileName: created.fileName || undefined,
+      fileMime: created.fileMime || undefined,
+    });
+  } catch {
+    /* overlay is a backup if sqlite is lost on refresh */
+  }
+  refreshFriendChat(userId);
+  return {
+    ok: true as const,
+    message: {
+      id: created.id,
+      createdAt: created.createdAt.toISOString(),
+      text: created.text,
+      fileKey: created.fileKey,
+      fileName: created.fileName,
+      fileMime: created.fileMime,
+    },
+  };
 }
 
 export async function unsendDm(formData: FormData) {
@@ -834,11 +943,29 @@ export async function unsendDm(formData: FormData) {
 
   const messageId = String(formData.get("messageId") || "");
   const userId = String(formData.get("userId") || "");
-  const msg = await prisma.directMessage.findUnique({ where: { id: messageId } });
-  if (!msg || msg.fromId !== me.id || msg.unsent) redirect(`/friends/${userId || ""}`);
-
-  await prisma.directMessage.update({ where: { id: messageId }, data: { unsent: true } });
-  redirect(`/friends/${userId}`);
+  let friendId = userId;
+  try {
+    const msg = await prisma.directMessage.findUnique({ where: { id: messageId } });
+    if (!msg || msg.fromId !== me.id) {
+      if (userId) refreshFriendChat(userId);
+      return { ok: true as const };
+    }
+    if (!msg.unsent) {
+      await withDbRetry(() =>
+        prisma.directMessage.update({ where: { id: messageId }, data: { unsent: true } }),
+      );
+    }
+    friendId = msg.toId === me.id ? msg.fromId : msg.toId;
+    try {
+      await markOverlayUnsent(dmThreadKey(me.id, friendId), messageId);
+    } catch {
+      /* overlay is best-effort */
+    }
+  } catch {
+    return { error: "unsend" as const };
+  }
+  refreshFriendChat(friendId);
+  return { ok: true as const };
 }
 
 export async function unsendMessage(formData: FormData) {
@@ -847,16 +974,36 @@ export async function unsendMessage(formData: FormData) {
 
   const messageId = String(formData.get("messageId") || "");
   const meetingId = String(formData.get("meetingId") || "");
-  const msg = await prisma.message.findUnique({ where: { id: messageId } });
-  if (!msg || msg.userId !== me.id || msg.unsent) redirect(`/meetings/${meetingId}`);
+  let groupId = meetingId;
+  try {
+    const msg = await prisma.message.findUnique({ where: { id: messageId } });
+    if (!msg || msg.userId !== me.id) {
+      if (meetingId) refreshGroupChat(meetingId);
+      return { ok: true as const };
+    }
 
-  const member = await prisma.member.findUnique({
-    where: { meetingId_userId: { meetingId: msg.meetingId, userId: me.id } },
-  });
-  if (!member) redirect(`/meetings/${meetingId}`);
+    const member = await prisma.member.findUnique({
+      where: { meetingId_userId: { meetingId: msg.meetingId, userId: me.id } },
+    });
+    if (!member) {
+      refreshGroupChat(msg.meetingId);
+      return { ok: true as const };
+    }
 
-  await prisma.message.update({ where: { id: messageId }, data: { unsent: true } });
-  redirect(`/meetings/${meetingId}`);
+    if (!msg.unsent) {
+      await withDbRetry(() => prisma.message.update({ where: { id: messageId }, data: { unsent: true } }));
+    }
+    groupId = msg.meetingId;
+    try {
+      await markOverlayUnsent(groupThreadKey(groupId), messageId);
+    } catch {
+      /* overlay is best-effort */
+    }
+  } catch {
+    return { error: "unsend" as const };
+  }
+  refreshGroupChat(groupId);
+  return { ok: true as const };
 }
 
 export async function markDmSeen(userId: string) {

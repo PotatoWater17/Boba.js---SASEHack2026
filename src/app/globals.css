@@ -3107,17 +3107,30 @@ button.cal-day:focus-visible {
   font-weight: 700;
   cursor: pointer;
   padding: 0;
-  opacity: 0;
   transition: opacity 0.15s;
 }
 
+.dm-copy-btn {
+  opacity: 0;
+}
+
+.dm-unsend-btn {
+  opacity: 0.85;
+}
+
 .dm-bubble:hover .dm-copy-btn,
-.dm-bubble:hover .dm-unsend-btn,
 .dm-bubble-meta:hover .dm-copy-btn,
-.dm-bubble-meta:hover .dm-unsend-btn,
 .group-chat-row:hover .dm-copy-btn,
+.dm-bubble:hover .dm-unsend-btn,
+.dm-bubble-meta:hover .dm-unsend-btn,
 .group-chat-row:hover .dm-unsend-btn {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .dm-copy-btn {
+    opacity: 0.85;
+  }
 }
 
 .dm-copy-btn:hover {

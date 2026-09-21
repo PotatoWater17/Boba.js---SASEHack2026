@@ -16,7 +16,7 @@ export default async function CreateMeetupPage() {
         <h1 className="page-title">Create a Study Buddy Group</h1>
         <p>Post a study session so classmates can jump in.</p>
       </header>
-      <CreateMeetupForm defaultUniversity={me.university} />
+      <CreateMeetupForm />
     </div>
   );
 }

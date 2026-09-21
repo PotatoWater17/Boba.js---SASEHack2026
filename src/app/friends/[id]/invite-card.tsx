@@ -1,3 +1,5 @@
+"use client";
+
 import { acceptMeetupInvite, declineMeetupInvite } from "@/app/actions";
 import Link from "next/link";
 

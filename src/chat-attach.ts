@@ -33,6 +33,10 @@ export function validChatAttachFile(file: File) {
   return file.type.startsWith("image/");
 }
 
+export function isImageMime(mime: string) {
+  return mime.startsWith("image/");
+}
+
 /** First allowed file from a drag-and-drop or paste payload. */
 export function firstChatAttachFile(dataTransfer: DataTransfer) {
   const list = dataTransfer.files;

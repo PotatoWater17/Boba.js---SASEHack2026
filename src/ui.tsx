@@ -23,6 +23,23 @@ import { inferMeetingOnline } from "@/meeting-format";
 import { searchUniversities, UNIVERSITIES } from "@/universities";
 import { isYearOption, YEAR_OPTIONS } from "@/years";
 
+function timeFieldValue(value?: string) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(trimmed);
+  if (!match) {
+    const raw = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
+    if (!raw) return "";
+    return `${String(Number(raw[1])).padStart(2, "0")}:${raw[2]}`;
+  }
+  let hour = Number(match[1]);
+  const minute = match[2];
+  const suffix = match[3].toUpperCase();
+  if (suffix === "PM" && hour < 12) hour += 12;
+  if (suffix === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minute}`;
+}
+
 export function ClassBubbles({
   label,
   name,
@@ -636,7 +653,7 @@ export function YearPicker({
 
 /** Subject dropdown + multi-topic searchable picker. */
 export function SubjectTopicFields({
-  defaultSubject = "Calc 2",
+  defaultSubject = "",
   initialTopics = [],
 }: {
   defaultSubject?: string;
@@ -700,6 +717,7 @@ export function SubjectTopicFields({
               value={query}
               placeholder="Type to search, then Add"
               autoComplete="off"
+              required={selected.length === 0}
               onFocus={() => setOpen(true)}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -763,7 +781,17 @@ export function SubjectTopicFields({
             </span>
           ))}
         </div>
-        <input type="hidden" name="topic" value={selected.join(", ")} />
+        <input
+          type="hidden"
+          name="topic"
+          value={[
+            ...selected,
+            ...(query.trim().length >= 2 &&
+            !selected.some((t) => t.toLowerCase() === query.trim().toLowerCase())
+              ? [query.trim()]
+              : []),
+          ].join(", ")}
+        />
         <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 0" }}>
           Pick from the list or add a custom topic. You need at least one.
         </p>
@@ -854,35 +882,25 @@ export function CreateMeetupForm({
   const editing = Boolean(meeting);
   const [state, action, pending] = useActionState(editing ? updateMeeting : createMeeting, null);
   const [meetDate, setMeetDate] = useState(meeting?.meetDate || "");
-  const [time, setTime] = useState(() => {
-    if (!meeting?.time) return "18:00";
-    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(meeting.time.trim());
-    if (!match) return "18:00";
-    let hour = Number(match[1]);
-    const minute = match[2];
-    const suffix = match[3].toUpperCase();
-    if (suffix === "PM" && hour < 12) hour += 12;
-    if (suffix === "AM" && hour === 12) hour = 0;
-    return `${String(hour).padStart(2, "0")}:${minute}`;
-  });
+  const [time, setTime] = useState(() => timeFieldValue(meeting?.time));
   const [groupKind, setGroupKind] = useState<GroupKindId>(
-    (meeting?.groupKind as GroupKindId) || "small",
+    (meeting?.groupKind as GroupKindId) || "partner",
   );
-  const [maxSize, setMaxSize] = useState(String(meeting?.maxSize || "5"));
-  const [style, setStyle] = useState<string>(meeting?.style || MEETUP_STYLES[0]);
+  const [maxSize, setMaxSize] = useState(String(meeting?.maxSize || GROUP_KINDS[0].min));
+  const [style, setStyle] = useState<string>(meeting?.style || "");
   const [notes, setNotes] = useState(meeting?.notes || "");
   const [isPrivate, setIsPrivate] = useState(Boolean(meeting?.isPrivate));
   const [requireApproval, setRequireApproval] = useState(
     Boolean(meeting?.requireApproval && !meeting?.isPrivate),
   );
 
-  const kind = GROUP_KINDS.find((k) => k.id === groupKind) ?? GROUP_KINDS[1];
+  const kind = GROUP_KINDS.find((k) => k.id === groupKind) ?? GROUP_KINDS[0];
   const minSize = Math.max(kind.min, meeting?.memberCount || 1);
 
   function onKindChange(next: GroupKindId) {
     setGroupKind(next);
     const k = GROUP_KINDS.find((x) => x.id === next);
-    if (k) setMaxSize(String(Math.max(k.defaultSize, meeting?.memberCount || 1)));
+    if (k) setMaxSize(String(Math.max(k.min, meeting?.memberCount || 1)));
   }
 
   const topics = meeting?.topic
@@ -894,7 +912,7 @@ export function CreateMeetupForm({
       {editing ? <input type="hidden" name="meetingId" value={meeting!.id} /> : null}
       {state?.error ? <p className="err">{state.error}</p> : null}
       <UniversityPicker defaultValue={meeting?.university || defaultUniversity} />
-      <SubjectTopicFields defaultSubject={meeting?.subject || "Calc 2"} initialTopics={topics} />
+      <SubjectTopicFields defaultSubject={meeting?.subject || ""} initialTopics={topics} />
       <label>
         Date
         <input
@@ -964,6 +982,7 @@ export function CreateMeetupForm({
           value={style}
           onChange={(e) => setStyle(e.target.value)}
         >
+          <option value="">Select a study style…</option>
           {MEETUP_STYLES.map((s) => (
             <option key={s} value={s}>
               {s}

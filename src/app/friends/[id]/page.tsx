@@ -1,19 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
+import { connection } from "next/server";
 import { Avatar } from "@/avatar";
-import { isImageMime } from "@/files";
-import { ChatReactions } from "@/chat-reactions";
-import { CopyMessageButton } from "@/copy-message-btn";
-import { messageCopyText } from "@/message-copy";
-import { getMe, isBlockedBetween, prisma, timeAgo } from "@/lib";
-import { packReactions } from "@/reactions";
-import { unsendDm } from "@/app/actions";
-import { ChatDropZone } from "@/chat-drop";
-import { DmCompose } from "./compose";
-import { DmThread } from "./thread";
-import { SeenOnOpen } from "./seen";
-import { DmImage } from "./dm-image";
-import { InviteCard } from "./invite-card";
+import { getMe, isBlockedBetween, prisma } from "@/lib";
+import { FriendChatPanel } from "./friend-chat-panel";
+import { loadDmLines } from "@/load-chat";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function FriendChatPage({
   params,
@@ -22,6 +17,8 @@ export default async function FriendChatPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
+  noStore();
+  await connection();
   const me = await getMe();
   if (!me) redirect("/login");
 
@@ -42,32 +39,10 @@ export default async function FriendChatPage({
   });
   if (!bond) redirect(`/profile/${friend.id}?reconnect=1`);
 
-  const messages = await prisma.directMessage.findMany({
-    where: {
-      OR: [
-        { fromId: me.id, toId: friend.id },
-        { fromId: friend.id, toId: me.id },
-      ],
-    },
-    include: {
-      from: true,
-      reactions: { include: { user: { select: { id: true, firstName: true } } } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const inviteIds = [...new Set(messages.map((m) => m.inviteId).filter(Boolean))];
-  const invites = inviteIds.length
-    ? await prisma.meetupInvite.findMany({
-        where: { id: { in: inviteIds } },
-        include: { meeting: true },
-      })
-    : [];
-  const inviteMap = new Map(invites.map((i) => [i.id, i]));
+  const lines = await loadDmLines(me.id, friend.id);
 
   return (
     <div className="page chats-page chat-room">
-      <SeenOnOpen userId={friend.id} />
       <header className="page-header">
         <Link href="/friends" className="pill" style={{ marginBottom: 10, display: "inline-block" }}>
           ← My Buddies
@@ -94,68 +69,7 @@ export default async function FriendChatPage({
         <p className="err">You&apos;re no longer buddies — reconnect from their profile.</p>
       ) : null}
 
-      <ChatDropZone className="chat-drop-zone-fill">
-        <div className="card">
-          <DmThread messageCount={messages.length}>
-          {messages.length === 0 ? (
-            <p className="text-muted" style={{ margin: 0 }}>No messages yet. Say hi.</p>
-          ) : (
-            messages.map((msg) => {
-              const invite = msg.inviteId ? inviteMap.get(msg.inviteId) : null;
-              const copyText = !msg.unsent && !invite ? messageCopyText(msg) : "";
-              return (
-                <div key={msg.id} className={`dm-bubble${msg.fromId === me.id ? " mine" : ""}`}>
-                  <div className="dm-bubble-meta">
-                    {msg.from.firstName} · {timeAgo(msg.createdAt)}
-                    {!msg.unsent && (copyText || (msg.fromId === me.id && !invite)) ? (
-                      <div className="dm-bubble-actions">
-                        {copyText ? <CopyMessageButton text={copyText} /> : null}
-                        {msg.fromId === me.id && !invite ? (
-                          <form action={unsendDm} className="dm-unsend-form">
-                            <input type="hidden" name="messageId" value={msg.id} />
-                            <input type="hidden" name="userId" value={friend.id} />
-                            <button type="submit" className="dm-unsend-btn">
-                              Unsend
-                            </button>
-                          </form>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  {msg.unsent ? (
-                    <div className="msg-unsent">Unsent</div>
-                  ) : (
-                    <>
-                      {invite ? (
-                        <InviteCard invite={invite} mine={msg.fromId === me.id} />
-                      ) : msg.text ? (
-                        <div className="dm-text">{msg.text}</div>
-                      ) : null}
-                      {msg.fileKey ? (
-                        isImageMime(msg.fileMime) ? (
-                          <DmImage src={`/api/files/${msg.id}`} alt={msg.fileName || "Photo"} />
-                        ) : (
-                          <a className="dm-file" href={`/api/files/${msg.id}`}>
-                            {msg.fileName || "Attachment"}
-                          </a>
-                        )
-                      ) : null}
-                      <ChatReactions
-                        kind="dm"
-                        messageId={msg.id}
-                        meId={me.id}
-                        initial={packReactions(msg.reactions, me.id)}
-                      />
-                    </>
-                  )}
-                </div>
-              );
-            })
-          )}
-          </DmThread>
-          <DmCompose key={messages.length} userId={friend.id} />
-        </div>
-      </ChatDropZone>
+      <FriendChatPanel friendId={friend.id} meId={me.id} meName={me.firstName} messages={lines} />
     </div>
   );
 }

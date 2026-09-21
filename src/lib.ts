@@ -34,13 +34,22 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 /** Bump when Prisma schema changes so dev picks up a fresh client after generate. */
-const PRISMA_CLIENT_VERSION = "2026-09-19-removed-member-v1";
+const PRISMA_CLIENT_VERSION = "2026-09-20-sqlite-abs-v1";
 
 function createPrisma() {
-  return new PrismaClient({
+  const client = new PrismaClient({
     log: ["error"],
     datasources: databaseUrl ? { db: { url: databaseUrl } } : undefined,
   });
+  void (async () => {
+    try {
+      await client.$queryRawUnsafe("PRAGMA busy_timeout = 5000");
+      await client.$queryRawUnsafe("PRAGMA journal_mode = WAL");
+    } catch {
+      /* sqlite pragma is best-effort */
+    }
+  })();
+  return client;
 }
 
 if (
@@ -66,7 +75,30 @@ export function isStrongPassword(password: string) {
   );
 }
 
-export { initials } from "@/utils";
+export { initials, timeAgo } from "@/utils";
+
+export async function withDbRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let wait = 40;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt === 4 || !/SQLITE_BUSY|database is locked/i.test(msg)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      wait *= 2;
+    }
+  }
+  throw new Error("database is locked");
+}
+
+export async function flushSqliteWrites() {
+  try {
+    await prisma.$executeRawUnsafe("PRAGMA wal_checkpoint(PASSIVE)");
+  } catch {
+    /* sqlite checkpoint is best-effort */
+  }
+}
 
 export async function getMe() {
   try {
@@ -258,7 +290,7 @@ export function timeToInput(value: string) {
   const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(value.trim());
   if (!match) {
     const raw = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-    if (!raw) return "18:00";
+    if (!raw) return "";
     return `${String(Number(raw[1])).padStart(2, "0")}:${raw[2]}`;
   }
   let hour = Number(match[1]);
@@ -301,21 +333,6 @@ export function groupMessagePreview(msg: {
   return `${msg.user.firstName}: ${body}`;
 }
 
-export function timeAgo(date: Date) {
-  const min = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} minute${min === 1 ? "" : "s"} ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
-  const week = Math.floor(day / 7);
-  if (week < 5) return `${week} week${week === 1 ? "" : "s"} ago`;
-  const month = Math.floor(day / 30);
-  if (month < 12) return `${month} month${month === 1 ? "" : "s"} ago`;
-  const year = Math.max(1, Math.floor(day / 365));
-  return `${year} year${year === 1 ? "" : "s"} ago`;
-}
 
 /** Higher score = better match to the student's profile preferences. */
 export function meetingMatchScore(

@@ -1,24 +1,21 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { unsendMessage } from "@/app/actions";
-import { DmImage } from "@/app/friends/[id]/dm-image";
-import { isImageMime } from "@/files";
+import { unstable_noStore as noStore } from "next/cache";
+import { connection } from "next/server";
 import { CreateMeetupForm, DeleteGroupButton, LeaveGroupButton, RemoveMemberButton } from "@/ui";
 import { Avatar } from "@/avatar";
-import { ChatReactions } from "@/chat-reactions";
-import { CopyMessageButton } from "@/copy-message-btn";
-import { messageCopyText } from "@/message-copy";
 import { formatMeetDate, getMe, groupKindLabel, prisma, splitList } from "@/lib";
+import { loadGroupLines } from "@/load-chat";
 import { MeetFormatBadge } from "@/meet-format-badge";
 import { meetingFormatLabel } from "@/meeting-format";
-import { packReactions } from "@/reactions";
 import { GroupSeenOnOpen } from "./seen";
-import { ChatDropZone } from "@/chat-drop";
-import { DmThread } from "@/app/friends/[id]/thread";
-import { GroupChatCompose } from "./compose";
+import { GroupChatPanel } from "./group-chat-panel";
 import { InviteBuddies } from "./invite";
 import { JoinGroupButton } from "./join-button";
 import { JoinRequestsPanel } from "./join-requests";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function MeetingPage({
   params,
@@ -27,6 +24,8 @@ export default async function MeetingPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; edit?: string; notice?: string }>;
 }) {
+  noStore();
+  await connection();
   const me = await getMe();
   if (!me) redirect("/login");
 
@@ -65,16 +64,7 @@ export default async function MeetingPage({
       })
     : [];
 
-  const messages = joined
-    ? await prisma.message.findMany({
-        where: { meetingId: id },
-        include: {
-          user: true,
-          reactions: { include: { user: { select: { id: true, firstName: true } } } },
-        },
-        orderBy: { createdAt: "asc" },
-      })
-    : [];
+  const chatLines = joined ? await loadGroupLines(me.id, id) : [];
   const topics = splitList(meeting.topic);
   const full = meeting.members.length >= meeting.maxSize;
   const soloOwner = isOwner && meeting.members.length === 1;
@@ -118,7 +108,6 @@ export default async function MeetingPage({
           <p>Update the details for your study session.</p>
         </header>
         <CreateMeetupForm
-          defaultUniversity={meeting.university || me.university}
           meeting={{
             id: meeting.id,
             subject: meeting.subject,
@@ -304,84 +293,17 @@ export default async function MeetingPage({
       {joined ? (
         <section className="page-section">
           <h2 className="page-section-title">Group Chat</h2>
-          <ChatDropZone className="chat-drop-zone-group">
-            <div className="card chat-panel-card">
-              <DmThread messageCount={messages.length}>
-              {messages.length === 0 ? (
-                <p className="text-muted" style={{ margin: 0 }}>No messages yet.</p>
-              ) : (
-                messages.map((msg) => {
-                  const removed = msg.authorRemoved;
-                  const copyText = !msg.unsent && !removed ? messageCopyText(msg) : "";
-                  return (
-                  <div key={msg.id} className="group-chat-row" style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                    {removed ? (
-                      <span
-                        className="avatar removed-user-avatar"
-                        style={{ width: 28, height: 28, fontSize: 10, flexShrink: 0 }}
-                        aria-hidden
-                      >
-                        ?
-                      </span>
-                    ) : (
-                      <Link href={`/profile/${msg.userId}`}>
-                        <Avatar user={msg.user} style={{ width: 28, height: 28, fontSize: 10 }} />
-                      </Link>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                        <b style={{ fontSize: 13 }}>{removed ? "Removed buddy" : `${msg.user.firstName}:`}</b>
-                        {!msg.unsent && !removed && (copyText || msg.userId === me.id) ? (
-                          <div className="dm-bubble-actions">
-                            {copyText ? <CopyMessageButton text={copyText} /> : null}
-                            {msg.userId === me.id ? (
-                              <form action={unsendMessage} className="dm-unsend-form">
-                                <input type="hidden" name="messageId" value={msg.id} />
-                                <input type="hidden" name="meetingId" value={meeting.id} />
-                                <button type="submit" className="dm-unsend-btn">
-                                  Unsend
-                                </button>
-                              </form>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </div>
-                      {msg.unsent ? (
-                        <div className="msg-unsent">Unsent</div>
-                      ) : removed ? (
-                        <div className="msg-removed-user">Removed buddy</div>
-                      ) : (
-                        <>
-                          {msg.text ? <div className="dm-text">{msg.text}</div> : null}
-                          {msg.fileKey ? (
-                            isImageMime(msg.fileMime) ? (
-                              <DmImage src={`/api/files/${msg.id}`} alt={msg.fileName || "Photo"} />
-                            ) : (
-                              <a className="dm-file" href={`/api/files/${msg.id}`}>
-                                {msg.fileName || "Attachment"}
-                              </a>
-                            )
-                          ) : null}
-                          <ChatReactions
-                            kind="group"
-                            messageId={msg.id}
-                            meId={me.id}
-                            initial={packReactions(msg.reactions ?? [], me.id)}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  );
-                })
-              )}
-              </DmThread>
-            {error === "empty" ? <p className="err">Add a message or attachment.</p> : null}
-            {error === "type" ? <p className="err">That file type isn&apos;t supported.</p> : null}
-            {error === "size" ? <p className="err">File must be 8 MB or smaller.</p> : null}
-            <GroupChatCompose key={messages.length} meetingId={meeting.id} />
-            </div>
-          </ChatDropZone>
+          {error === "empty" ? <p className="err">Add a message or attachment.</p> : null}
+          {error === "type" ? <p className="err">That file type isn&apos;t supported.</p> : null}
+          {error === "size" ? <p className="err">File must be 8 MB or smaller.</p> : null}
+          <GroupChatPanel
+            meetingId={meeting.id}
+            meId={me.id}
+            meFirst={me.firstName}
+            meLast={me.lastName}
+            mePhotoKey={me.photoKey}
+            messages={chatLines}
+          />
         </section>
       ) : null}
     </div>
